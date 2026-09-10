@@ -1,0 +1,39 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "OwaWidget.Probe/1.0.0": {
+        "dependencies": {
+          "OwaWidget.Eas": "1.0.0"
+        },
+        "runtime": {
+          "OwaWidget.Probe.dll": {}
+        }
+      },
+      "OwaWidget.Eas/1.0.0": {
+        "runtime": {
+          "OwaWidget.Eas.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "OwaWidget.Probe/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "OwaWidget.Eas/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

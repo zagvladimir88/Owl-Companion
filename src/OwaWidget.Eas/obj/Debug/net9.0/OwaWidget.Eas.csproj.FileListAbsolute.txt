@@ -1,0 +1,11 @@
+C:\Users\strjk\Projects\OwaWidget\src\OwaWidget.Eas\bin\Debug\net9.0\OwaWidget.Eas.deps.json
+C:\Users\strjk\Projects\OwaWidget\src\OwaWidget.Eas\bin\Debug\net9.0\OwaWidget.Eas.dll
+C:\Users\strjk\Projects\OwaWidget\src\OwaWidget.Eas\bin\Debug\net9.0\OwaWidget.Eas.pdb
+C:\Users\strjk\Projects\OwaWidget\src\OwaWidget.Eas\obj\Debug\net9.0\OwaWidget.Eas.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\strjk\Projects\OwaWidget\src\OwaWidget.Eas\obj\Debug\net9.0\OwaWidget.Eas.AssemblyInfoInputs.cache
+C:\Users\strjk\Projects\OwaWidget\src\OwaWidget.Eas\obj\Debug\net9.0\OwaWidget.Eas.AssemblyInfo.cs
+C:\Users\strjk\Projects\OwaWidget\src\OwaWidget.Eas\obj\Debug\net9.0\OwaWidget.Eas.csproj.CoreCompileInputs.cache
+C:\Users\strjk\Projects\OwaWidget\src\OwaWidget.Eas\obj\Debug\net9.0\OwaWidget.Eas.dll
+C:\Users\strjk\Projects\OwaWidget\src\OwaWidget.Eas\obj\Debug\net9.0\refint\OwaWidget.Eas.dll
+C:\Users\strjk\Projects\OwaWidget\src\OwaWidget.Eas\obj\Debug\net9.0\OwaWidget.Eas.pdb
+C:\Users\strjk\Projects\OwaWidget\src\OwaWidget.Eas\obj\Debug\net9.0\ref\OwaWidget.Eas.dll
