@@ -1,0 +1,32 @@
+# Результаты сборки
+bin/
+obj/
+dist/
+publish/
+*.binlog
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userprefs
+*.DotSettings.user
+
+# Тесты и покрытие
+TestResults/
+[Cc]overage*/
+*.coverage
+*.trx
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# Прочее
+*.log
+*.tmp
+Thumbs.db
+desktop.ini
