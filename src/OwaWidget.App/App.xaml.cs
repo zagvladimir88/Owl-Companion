@@ -12,6 +12,9 @@ namespace OwaWidget.App;
 
 public partial class App : Application
 {
+    private const string SingleInstanceName = @"Local\OwaWidget.SingleInstance";
+
+    private Mutex? _instanceLock;
     private AppSettings _settings = new();
     private AppState _state = new();
     private NotificationService _notifications = null!;
@@ -27,10 +30,21 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        _instanceLock = new Mutex(true, SingleInstanceName, out var createdNew);
+        if (!createdNew)
+        {
+            Log.Info("another instance is already running, exiting");
+            _instanceLock.Dispose();
+            _instanceLock = null;
+            Shutdown();
+            return;
+        }
+
         ShortcutInstaller.SetProcessIdentity();
 
         DispatcherUnhandledException += (_, args) =>
         {
+            Log.Error("unhandled exception", args.Exception);
             _notifications?.ShowError("Сбой виджета", args.Exception.Message);
             args.Handled = true;
         };
@@ -38,10 +52,7 @@ public partial class App : Application
         _settings = AppStorage.LoadSettings();
         _state = AppStorage.LoadState();
 
-        _state.MailSyncKey = "0";
-        _state.CalendarSyncKey = "0";
-
-        ApplicationThemeManager.ApplySystemTheme();
+        ApplicationThemeManager.Apply(ApplicationTheme.Dark);
 
         if (CredentialStore.TryLoad(_settings.Server) is null && !ShowLogin())
         {
@@ -67,9 +78,22 @@ public partial class App : Application
         };
         _tray.ExitRequested += Shutdown;
         _tray.PauseToggled += paused => _paused = paused;
+        _tray.StartWithWindows = _settings.StartWithWindows;
+        _tray.StartWithWindowsToggled += enabled =>
+        {
+            _settings.StartWithWindows = enabled;
+            AppStorage.Save(_settings);
+            ShortcutInstaller.SetStartupShortcut(enabled);
+        };
+        _tray.ResetCacheRequested += () =>
+        {
+            _session?.ClearCache();
+            StartSession();
+        };
 
         ToastNotificationManagerCompat.OnActivated += OnToastActivated;
         ShortcutInstaller.EnsureShortcut();
+        ShortcutInstaller.SetStartupShortcut(_settings.StartWithWindows);
 
         Log.Info($"started, exe={Environment.ProcessPath}");
 
@@ -82,7 +106,14 @@ public partial class App : Application
         _session?.Dispose();
         _reminders?.Dispose();
         _tray?.Dispose();
-        ToastNotificationManagerCompat.Uninstall();
+
+        if (_instanceLock is not null)
+        {
+            ToastNotificationManagerCompat.Uninstall();
+            _instanceLock.ReleaseMutex();
+            _instanceLock.Dispose();
+            _instanceLock = null;
+        }
 
         base.OnExit(e);
     }
@@ -98,6 +129,7 @@ public partial class App : Application
         _session.MailChanged += OnMailChanged;
         _session.CalendarChanged += OnCalendarChanged;
         _session.StatusChanged += OnStatusChanged;
+        _session.PrimeFromCache();
 
         var session = _session;
         var token = _cancellation.Token;
@@ -183,7 +215,7 @@ public partial class App : Application
         }
 
         _flyout.UpdateMail(_session?.Messages ?? Array.Empty<EasMessage>());
-        _flyout.UpdateCalendar(_session?.UpcomingOccurrences() ?? Array.Empty<EasOccurrence>());
+        _flyout.UpdateCalendar(_session?.UpcomingOccurrences(30) ?? Array.Empty<EasOccurrence>());
         _flyout.ShowNearTray();
     }
 

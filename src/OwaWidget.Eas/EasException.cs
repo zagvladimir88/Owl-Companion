@@ -10,6 +10,17 @@ public class EasException : Exception
     }
 }
 
+public sealed class EasTimeoutException : EasException
+{
+    public EasTimeoutException(string command)
+        : base($"Command {command} timed out.")
+    {
+        Command = command;
+    }
+
+    public string Command { get; }
+}
+
 public sealed class EasHttpException : EasException
 {
     public EasHttpException(HttpStatusCode statusCode, string command, string message)

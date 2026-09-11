@@ -11,7 +11,8 @@ public static class WbxmlCodePages
     public const byte AirSyncBase = 0x11;
     public const byte Settings = 0x12;
     public const byte ItemOperations = 0x14;
-    public const byte ComposeMail = 0x16;
+    public const byte ComposeMail = 0x15;
+    public const byte Email2 = 0x16;
 
     private const int PageCount = 0x18;
 
@@ -38,6 +39,7 @@ public static class WbxmlCodePages
         RegisterSettings();
         RegisterItemOperations();
         RegisterComposeMail();
+        RegisterEmail2();
     }
 
     private static void Add(byte page, byte token, string name)
@@ -345,6 +347,25 @@ public static class WbxmlCodePages
         Add(ComposeMail, 0x11, "ClientId");
         Add(ComposeMail, 0x12, "Status");
         Add(ComposeMail, 0x13, "AccountId");
+    }
+
+    private static void RegisterEmail2()
+    {
+        Add(Email2, 0x05, "UmCallerId");
+        Add(Email2, 0x06, "UmUserNotes");
+        Add(Email2, 0x07, "UmAttDuration");
+        Add(Email2, 0x08, "UmAttOrder");
+        Add(Email2, 0x09, "ConversationId");
+        Add(Email2, 0x0A, "ConversationIndex");
+        Add(Email2, 0x0B, "LastVerbExecuted");
+        Add(Email2, 0x0C, "LastVerbExecutionTime");
+        Add(Email2, 0x0D, "ReceivedAsBcc");
+        Add(Email2, 0x0E, "Sender");
+        Add(Email2, 0x0F, "CalendarType");
+        Add(Email2, 0x10, "IsLeapMonth");
+        Add(Email2, 0x11, "AccountId");
+        Add(Email2, 0x12, "FirstDayOfWeek");
+        Add(Email2, 0x13, "MeetingMessageType");
     }
 
     public static string GetName(byte page, byte token)

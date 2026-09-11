@@ -54,6 +54,45 @@ public static class ShortcutInstaller
         }
     }
 
+    public static void SetStartupShortcut(bool enabled)
+    {
+        try
+        {
+            var path = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Microsoft", "Windows", "Start Menu", "Programs", "Startup", ShortcutName);
+
+            if (!enabled)
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                    Log.Info("startup shortcut removed");
+                }
+
+                return;
+            }
+
+            var executable = Environment.ProcessPath;
+            if (string.IsNullOrEmpty(executable))
+            {
+                return;
+            }
+
+            if (File.Exists(path) && ResolveTarget(path) == executable)
+            {
+                return;
+            }
+
+            Create(path, executable, FindActivatorClsid(executable));
+            Log.Info($"startup shortcut created: {path}");
+        }
+        catch (Exception exception)
+        {
+            Log.Error("startup shortcut failed", exception);
+        }
+    }
+
     private static Guid FindActivatorClsid(string executable)
     {
         using var classes = Registry.CurrentUser.OpenSubKey(@"Software\Classes\CLSID");

@@ -18,7 +18,21 @@ public static class Log
 
     public static void Error(string context, Exception exception)
     {
-        Write("ERROR", $"{context}: {exception.GetType().Name}: {exception.Message}");
+        Write("ERROR", $"{context}: {Describe(exception)}");
+    }
+
+    private static string Describe(Exception exception)
+    {
+        var parts = new List<string>();
+        var current = exception;
+
+        while (current is not null && parts.Count < 5)
+        {
+            parts.Add($"{current.GetType().Name}: {current.Message}");
+            current = current.InnerException;
+        }
+
+        return string.Join(" <- ", parts);
     }
 
     private static void Write(string level, string message)

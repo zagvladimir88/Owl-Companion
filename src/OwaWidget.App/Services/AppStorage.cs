@@ -87,7 +87,7 @@ public static class AppStorage
         Write(StatePath, state);
     }
 
-    private static T? Load<T>(string path) where T : class
+    internal static T? Load<T>(string path, JsonSerializerOptions? options = null) where T : class
     {
         try
         {
@@ -96,7 +96,7 @@ public static class AppStorage
                 return null;
             }
 
-            return JsonSerializer.Deserialize<T>(File.ReadAllText(path), Options);
+            return JsonSerializer.Deserialize<T>(File.ReadAllText(path), options ?? Options);
         }
         catch (Exception)
         {
@@ -104,12 +104,12 @@ public static class AppStorage
         }
     }
 
-    private static void Write<T>(string path, T value)
+    internal static void Write<T>(string path, T value, JsonSerializerOptions? options = null)
     {
         System.IO.Directory.CreateDirectory(Directory);
 
         var temporary = path + ".tmp";
-        File.WriteAllText(temporary, JsonSerializer.Serialize(value, Options));
+        File.WriteAllText(temporary, JsonSerializer.Serialize(value, options ?? Options));
         File.Move(temporary, path, overwrite: true);
     }
 }

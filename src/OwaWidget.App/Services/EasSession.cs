@@ -27,9 +27,14 @@ public sealed class EasSession : IDisposable
     private readonly List<EasAppointment> _appointments = new();
     private readonly object _gate = new();
     private readonly SemaphoreSlim _mailSyncLock = new(1, 1);
+    private readonly SemaphoreSlim _calendarSyncLock = new(1, 1);
+
+    private static readonly TimeSpan BaselineTimeout = TimeSpan.FromSeconds(180);
+    private static readonly TimeSpan DeltaTimeout = TimeSpan.FromSeconds(60);
 
     private EasClient? _client;
     private bool _baselineDone;
+    private string? _lastReported;
 
     public EasSession(AppSettings settings, AppState state)
     {
@@ -67,6 +72,88 @@ public sealed class EasSession : IDisposable
         }
     }
 
+    public void PrimeFromCache()
+    {
+        var cachedMail = CacheStore.LoadMail(_state);
+        var cachedAppointments = CacheStore.LoadCalendar(_state);
+        var resync = false;
+
+        if (cachedMail is null && _state.MailSyncKey != "0")
+        {
+            Log.Info("no usable mail cache while sync key is advanced, forcing full resync");
+            _state.MailSyncKey = "0";
+            resync = true;
+        }
+
+        if (cachedAppointments is null && _state.CalendarSyncKey != "0")
+        {
+            Log.Info("no usable calendar cache while sync key is advanced, forcing full resync");
+            _state.CalendarSyncKey = "0";
+            resync = true;
+        }
+
+        if (resync)
+        {
+            AppStorage.Save(_state);
+        }
+
+        int messages;
+        int appointments;
+
+        lock (_gate)
+        {
+            _messages.Clear();
+            if (cachedMail is not null)
+            {
+                _messages.AddRange(cachedMail);
+            }
+
+            _appointments.Clear();
+            if (cachedAppointments is not null)
+            {
+                _appointments.AddRange(cachedAppointments);
+            }
+
+            messages = _messages.Count;
+            appointments = _appointments.Count;
+        }
+
+        Log.Info($"cache primed: messages={messages}, appointments={appointments}");
+
+        if (messages == 0 && appointments == 0)
+        {
+            return;
+        }
+
+        if (messages > 0)
+        {
+            MailChanged?.Invoke();
+        }
+
+        if (appointments > 0)
+        {
+            CalendarChanged?.Invoke(UpcomingOccurrences());
+        }
+    }
+
+    public void ClearCache()
+    {
+        lock (_gate)
+        {
+            _messages.Clear();
+            _appointments.Clear();
+        }
+
+        CacheStore.Clear();
+        _state.MailSyncKey = "0";
+        _state.CalendarSyncKey = "0";
+        _baselineDone = false;
+        AppStorage.Save(_state);
+
+        MailChanged?.Invoke();
+        CalendarChanged?.Invoke(Array.Empty<EasOccurrence>());
+    }
+
     public IReadOnlyList<EasOccurrence> UpcomingOccurrences(int days = 7)
     {
         lock (_gate)
@@ -102,17 +189,20 @@ public sealed class EasSession : IDisposable
             }
             catch (EasHttpException exception) when (exception.IsAuthFailure)
             {
+                Log.Error("auth failed, session stopped", exception);
                 Report(SessionStatus.AuthenticationFailed, "Неверный логин или пароль");
                 return;
             }
             catch (EasStatusException exception) when (exception.InvalidSyncKey)
             {
+                Log.Error("invalid sync key, resetting", exception);
                 ResetSyncKeys();
                 Report(SessionStatus.Reconnecting, "Ключи синхронизации сброшены, повтор");
             }
             catch (Exception exception)
             {
-                Report(SessionStatus.Reconnecting, $"Нет связи: {exception.Message}");
+                Log.Error($"session failed, retrying in {backoff.TotalSeconds:F0}s", exception);
+                Report(SessionStatus.Reconnecting, Describe(exception));
                 await Task.Delay(backoff, cancellationToken);
                 backoff = TimeSpan.FromSeconds(Math.Min(backoff.TotalSeconds * 2, 300));
             }
@@ -184,6 +274,7 @@ public sealed class EasSession : IDisposable
     {
         _client?.Dispose();
         _mailSyncLock.Dispose();
+        _calendarSyncLock.Dispose();
     }
 
     private void Connect()
@@ -275,6 +366,9 @@ public sealed class EasSession : IDisposable
 
         _baselineDone = true;
         AppStorage.Save(_state);
+
+        PersistMailCache();
+        PersistCalendarCache();
     }
 
     private async Task PingLoopAsync(CancellationToken cancellationToken)
@@ -352,19 +446,25 @@ public sealed class EasSession : IDisposable
         var pages = 0;
         var more = true;
         var touched = false;
+        var baseline = !_baselineDone;
 
         while (more && pages < MaxPages)
         {
-            var page = await RunWithProvisioningAsync(
-                () => SyncCommand.ExecuteAsync(Client, new SyncRequest
-                {
-                    CollectionId = _state.InboxId!,
-                    SyncKey = _state.MailSyncKey,
-                    WindowSize = 50,
-                    FilterType = _settings.MailFilterType,
-                    BodyType = 1,
-                    BodyTruncationSize = 6000
-                }, cancellationToken),
+            var page = await RunWithTimeoutRetryAsync(
+                "mail",
+                timeout => RunWithProvisioningAsync(
+                    () => SyncCommand.ExecuteAsync(Client, new SyncRequest
+                    {
+                        CollectionId = _state.InboxId!,
+                        SyncKey = _state.MailSyncKey,
+                        WindowSize = baseline ? 25 : 50,
+                        FilterType = _settings.MailFilterType,
+                        BodyType = 1,
+                        BodyTruncationSize = baseline ? 1024 : 6000,
+                        Timeout = timeout
+                    }, cancellationToken),
+                    cancellationToken),
+                baseline,
                 cancellationToken);
 
             _state.MailSyncKey = page.SyncKey;
@@ -433,6 +533,7 @@ public sealed class EasSession : IDisposable
 
         if (touched)
         {
+            PersistMailCache();
             MailChanged?.Invoke();
         }
 
@@ -454,22 +555,42 @@ public sealed class EasSession : IDisposable
 
     private async Task DrainCalendarAsync(CancellationToken cancellationToken)
     {
+        await _calendarSyncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await DrainCalendarCoreAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _calendarSyncLock.Release();
+        }
+    }
+
+    private async Task DrainCalendarCoreAsync(CancellationToken cancellationToken)
+    {
         var pages = 0;
         var more = true;
         var touched = false;
+        var baseline = !_baselineDone;
 
         while (more && pages < MaxPages)
         {
-            var page = await RunWithProvisioningAsync(
-                () => SyncCommand.ExecuteAsync(Client, new SyncRequest
-                {
-                    CollectionId = _state.CalendarId!,
-                    SyncKey = _state.CalendarSyncKey,
-                    WindowSize = 50,
-                    FilterType = _settings.CalendarFilterType,
-                    BodyType = 1,
-                    BodyTruncationSize = 1024
-                }, cancellationToken),
+            var page = await RunWithTimeoutRetryAsync(
+                "calendar",
+                timeout => RunWithProvisioningAsync(
+                    () => SyncCommand.ExecuteAsync(Client, new SyncRequest
+                    {
+                        CollectionId = _state.CalendarId!,
+                        SyncKey = _state.CalendarSyncKey,
+                        WindowSize = 50,
+                        FilterType = _settings.CalendarFilterType,
+                        BodyType = 1,
+                        BodyTruncationSize = 4096,
+                        Timeout = timeout
+                    }, cancellationToken),
+                    cancellationToken),
+                baseline,
                 cancellationToken);
 
             _state.CalendarSyncKey = page.SyncKey;
@@ -495,7 +616,62 @@ public sealed class EasSession : IDisposable
 
         if (touched)
         {
+            PersistCalendarCache();
             CalendarChanged?.Invoke(UpcomingOccurrences());
+        }
+    }
+
+    private void PersistMailCache()
+    {
+        List<EasMessage> snapshot;
+
+        lock (_gate)
+        {
+            snapshot = _messages.ToList();
+        }
+
+        CacheStore.SaveMail(_state, snapshot);
+    }
+
+    private void PersistCalendarCache()
+    {
+        List<EasAppointment> snapshot;
+
+        lock (_gate)
+        {
+            var pruned = CacheStore.Prune(_appointments);
+            if (pruned.Count != _appointments.Count)
+            {
+                _appointments.Clear();
+                _appointments.AddRange(pruned);
+            }
+
+            snapshot = _appointments.ToList();
+        }
+
+        CacheStore.SaveCalendar(_state, snapshot);
+    }
+
+    private async Task<T> RunWithTimeoutRetryAsync<T>(
+        string label,
+        Func<TimeSpan, Task<T>> action,
+        bool baseline,
+        CancellationToken cancellationToken)
+    {
+        var timeout = baseline ? BaselineTimeout : DeltaTimeout;
+
+        try
+        {
+            return await action(timeout).ConfigureAwait(false);
+        }
+        catch (EasTimeoutException)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var extended = timeout + timeout;
+            Log.Info($"{label} sync timed out after {timeout.TotalSeconds:F0}s, retrying with {extended.TotalSeconds:F0}s");
+
+            return await action(extended).ConfigureAwait(false);
         }
     }
 
@@ -539,8 +715,46 @@ public sealed class EasSession : IDisposable
         AppStorage.Save(_state);
     }
 
+    private static string Describe(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            switch (current)
+            {
+                case EasTimeoutException:
+                    return "Сервер не ответил вовремя";
+                case System.Net.Sockets.SocketException:
+                    return "Сервер недоступен — проверьте VPN";
+                case System.Security.Authentication.AuthenticationException:
+                    return "Не удалось установить защищённое соединение";
+                case EasHttpException http:
+                    return $"Сервер ответил {(int)http.StatusCode}";
+                case EasStatusException status:
+                    return $"Ошибка синхронизации {status.Status}";
+            }
+
+            if (current is System.IO.IOException)
+            {
+                return "Соединение разорвано — проверьте VPN";
+            }
+        }
+
+        if (exception is System.Net.Http.HttpRequestException)
+        {
+            return "Не удалось установить защищённое соединение";
+        }
+
+        return "Нет связи с сервером";
+    }
+
     private void Report(SessionStatus status, string message)
     {
+        if (_lastReported != $"{status}|{message}")
+        {
+            _lastReported = $"{status}|{message}";
+            Log.Info($"status {status}: {message}");
+        }
+
         StatusChanged?.Invoke(status, message);
     }
 

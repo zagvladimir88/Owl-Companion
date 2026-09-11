@@ -87,7 +87,7 @@ public sealed class EasClient : IDisposable
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new EasException($"Command {command} timed out.");
+            throw new EasTimeoutException(command);
         }
 
         using (response)

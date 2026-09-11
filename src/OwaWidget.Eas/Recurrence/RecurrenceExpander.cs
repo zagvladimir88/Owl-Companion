@@ -21,6 +21,30 @@ public sealed record EasOccurrence
     public bool IsRecurring { get; init; }
 
     public bool IsException { get; init; }
+
+    public DateTimeOffset OriginalStart { get; init; }
+
+    public string? Body { get; init; }
+
+    public string? OrganizerName { get; init; }
+
+    public string? OrganizerEmail { get; init; }
+
+    public bool AllDay { get; init; }
+
+    public IReadOnlyList<EasAttendee> Attendees { get; init; } = Array.Empty<EasAttendee>();
+
+    public IReadOnlyList<string> Categories { get; init; } = Array.Empty<string>();
+
+    public EasBusyStatus? BusyStatus { get; init; }
+
+    public EasResponseType? ResponseType { get; init; }
+
+    public bool IsMeeting { get; init; }
+
+    public bool IsOrganizer { get; init; }
+
+    public bool NeedsResponse { get; init; }
 }
 
 public static class RecurrenceExpander
@@ -296,7 +320,19 @@ public static class RecurrenceExpander
             OnlineMeetingLink = appointment.OnlineMeetingLink,
             ReminderMinutes = appointment.ReminderMinutes,
             IsRecurring = recurring,
-            IsException = isException
+            IsException = isException,
+            OriginalStart = start,
+            Body = appointment.Body,
+            OrganizerName = appointment.OrganizerName,
+            OrganizerEmail = appointment.OrganizerEmail,
+            AllDay = appointment.AllDay,
+            Attendees = appointment.Attendees,
+            Categories = appointment.Categories,
+            BusyStatus = appointment.BusyStatus,
+            ResponseType = appointment.ResponseType,
+            IsMeeting = appointment.IsMeeting,
+            IsOrganizer = appointment.IsOrganizer,
+            NeedsResponse = appointment.NeedsResponse
         };
     }
 
@@ -319,7 +355,19 @@ public static class RecurrenceExpander
             OnlineMeetingLink = appointment.OnlineMeetingLink,
             ReminderMinutes = appointment.ReminderMinutes,
             IsRecurring = true,
-            IsException = true
+            IsException = true,
+            OriginalStart = originalStart,
+            Body = appointment.Body,
+            OrganizerName = appointment.OrganizerName,
+            OrganizerEmail = appointment.OrganizerEmail,
+            AllDay = appointment.AllDay,
+            Attendees = appointment.Attendees,
+            Categories = appointment.Categories,
+            BusyStatus = appointment.BusyStatus,
+            ResponseType = appointment.ResponseType,
+            IsMeeting = appointment.IsMeeting,
+            IsOrganizer = appointment.IsOrganizer,
+            NeedsResponse = appointment.NeedsResponse
         };
     }
 }

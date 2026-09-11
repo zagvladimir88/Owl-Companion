@@ -34,6 +34,8 @@ public sealed class SyncRequest
     public int? BodyType { get; init; }
 
     public int BodyTruncationSize { get; init; } = 512;
+
+    public TimeSpan? Timeout { get; init; }
 }
 
 public static class SyncCommand
@@ -45,7 +47,7 @@ public static class SyncCommand
     {
         var writer = BuildRequest(request);
 
-        var root = await client.SendAsync("Sync", writer, cancellationToken: cancellationToken)
+        var root = await client.SendAsync("Sync", writer, request.Timeout, cancellationToken)
             .ConfigureAwait(false);
 
         if (root is null)

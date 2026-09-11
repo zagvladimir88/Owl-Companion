@@ -26,8 +26,68 @@ public static partial class CalendarParser
             Body = body,
             OnlineMeetingLink = ExtractMeetingLink(data, body),
             Recurrence = ParseRecurrence(data.Child("Recurrence")),
-            Exceptions = ParseExceptions(data.Child("Exceptions"))
+            Exceptions = ParseExceptions(data.Child("Exceptions")),
+            Attendees = ParseAttendees(data.Child("Attendees")),
+            Categories = ParseCategories(data.Child("Categories")),
+            BusyStatus = data.ChildInt("BusyStatus") is { } busy ? (EasBusyStatus)busy : null,
+            ResponseType = data.ChildInt("ResponseType") is { } response ? (EasResponseType)response : null,
+            ResponseRequested = data.ChildText("ResponseRequested") == "1",
+            AppointmentReplyTime = EmailParser.ParseDate(data.ChildText("AppointmentReplyTime")),
+            Sensitivity = data.ChildInt("Sensitivity"),
+            DtStamp = EmailParser.ParseDate(data.ChildText("DtStamp")),
+            TimeZoneRaw = data.ChildText("TimeZone")
         };
+    }
+
+    private static IReadOnlyList<EasAttendee> ParseAttendees(WbxmlElement? element)
+    {
+        if (element is null)
+        {
+            return Array.Empty<EasAttendee>();
+        }
+
+        var result = new List<EasAttendee>();
+
+        foreach (var attendee in element.ChildrenNamed("Attendee"))
+        {
+            var name = attendee.ChildText("Attendee_Name");
+            var email = attendee.ChildText("Attendee_Email");
+
+            if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(email))
+            {
+                continue;
+            }
+
+            result.Add(new EasAttendee
+            {
+                Name = name,
+                Email = email,
+                Status = (EasAttendeeStatus)(attendee.ChildInt("Attendee_Status") ?? 0),
+                Type = (EasAttendeeType)(attendee.ChildInt("Attendee_Type") ?? 0)
+            });
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<string> ParseCategories(WbxmlElement? element)
+    {
+        if (element is null)
+        {
+            return Array.Empty<string>();
+        }
+
+        var result = new List<string>();
+
+        foreach (var category in element.ChildrenNamed("Category"))
+        {
+            if (!string.IsNullOrWhiteSpace(category.Text))
+            {
+                result.Add(category.Text.Trim());
+            }
+        }
+
+        return result;
     }
 
     public static string? ExtractMeetingLink(WbxmlElement data, string? body)

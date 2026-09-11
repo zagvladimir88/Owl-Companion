@@ -102,12 +102,6 @@ public sealed class NotificationService
                 .AddArgument("action", "markRead")
                 .AddArgument("id", message.ServerId)
                 .SetBackgroundActivation())
-            .AddInputTextBox("reply", "Ответить…")
-            .AddButton(new ToastButton()
-                .SetContent("Ответить")
-                .AddArgument("action", "reply")
-                .AddArgument("id", message.ServerId)
-                .SetBackgroundActivation())
             .AddAudio(new Uri("ms-winsoundevent:Notification.Mail"));
 
         Show(builder, MailGroup, message.ServerId);

@@ -18,6 +18,7 @@ public sealed class TrayIconService : IDisposable
     private readonly NotifyIcon _notifyIcon;
     private readonly ContextMenu _menu;
     private readonly MenuItem _pauseItem;
+    private readonly MenuItem _startupItem;
     private readonly Icon _baseIcon;
 
     private Icon? _currentIcon;
@@ -30,6 +31,9 @@ public sealed class TrayIconService : IDisposable
         _pauseItem = new MenuItem { Header = "Приостановить уведомления", IsCheckable = true };
         _pauseItem.Click += (_, _) => PauseToggled?.Invoke(_pauseItem.IsChecked);
 
+        _startupItem = new MenuItem { Header = "Запускать при входе", IsCheckable = true };
+        _startupItem.Click += (_, _) => StartWithWindowsToggled?.Invoke(_startupItem.IsChecked);
+
         _menu = new ContextMenu();
         _menu.Items.Add(Item("Показать панель", () => PanelRequested?.Invoke()));
         _menu.Items.Add(Item("Открыть почту в браузере", () => WebMailRequested?.Invoke()));
@@ -37,6 +41,9 @@ public sealed class TrayIconService : IDisposable
         _menu.Items.Add(Item("Синхронизировать сейчас", () => RefreshRequested?.Invoke()));
         _menu.Items.Add(Item("Проверить уведомление", () => TestNotificationRequested?.Invoke()));
         _menu.Items.Add(_pauseItem);
+        _menu.Items.Add(new Separator());
+        _menu.Items.Add(_startupItem);
+        _menu.Items.Add(Item("Сбросить кэш", () => ResetCacheRequested?.Invoke()));
         _menu.Items.Add(new Separator());
         _menu.Items.Add(Item("Учётные данные…", () => SettingsRequested?.Invoke()));
         _menu.Items.Add(Item("Выход", () => ExitRequested?.Invoke()));
@@ -75,6 +82,16 @@ public sealed class TrayIconService : IDisposable
     public event Action? ExitRequested;
 
     public event Action<bool>? PauseToggled;
+
+    public event Action<bool>? StartWithWindowsToggled;
+
+    public event Action? ResetCacheRequested;
+
+    public bool StartWithWindows
+    {
+        get => _startupItem.IsChecked;
+        set => _startupItem.IsChecked = value;
+    }
 
     public void Update(int unreadCount, string status)
     {
