@@ -55,6 +55,12 @@ public sealed class StreamMeeting
 
     public string TimeColumn { get; init; } = string.Empty;
 
+    public IReadOnlyList<string> Words { get; init; } = Array.Empty<string>();
+
+    public Brush TitleBrush { get; init; } = Palette.Ink;
+
+    public Brush MetaBrush { get; init; } = Palette.Secondary;
+
     public Visibility TimeColumnVisibility =>
         TimeColumn.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
 
@@ -87,15 +93,65 @@ public sealed class StreamMeeting
         };
     }
 
+    public static StreamMeeting CreateForSearch(
+        EasOccurrence occurrence,
+        DateTimeOffset now,
+        IReadOnlyList<string> words)
+    {
+        var start = occurrence.Start.ToLocalTime();
+        var past = occurrence.End <= now;
+        var parts = new List<string> { Format.Span(occurrence.End - occurrence.Start) };
+
+        if (occurrence.Attendees.Count > 0)
+        {
+            parts.Add(occurrence.Attendees.Count.ToString());
+        }
+
+        if (past)
+        {
+            parts.Add("прошла");
+        }
+        else if (occurrence.Start <= now)
+        {
+            parts.Add($"идёт · осталось {Format.Span(occurrence.End - now)}");
+        }
+        else if (start.Date == now.Date)
+        {
+            parts.Add($"через {Format.Span(occurrence.Start - now)}");
+        }
+        else
+        {
+            var reply = ReplyLabel(occurrence);
+            if (reply is not null)
+            {
+                parts.Add(reply);
+            }
+        }
+
+        return new StreamMeeting
+        {
+            Occurrence = occurrence,
+            Title = occurrence.Subject,
+            Meta = string.Join(" · ", parts),
+            TimeColumn = start.ToString("HH:mm"),
+            Words = words,
+            TitleBrush = past ? Palette.Tertiary : Palette.Ink,
+            MetaBrush = past ? Palette.Faint : Palette.Secondary
+        };
+    }
+
     private static string? ReplyLabel(EasOccurrence occurrence)
     {
+        if (occurrence.NeedsResponse)
+        {
+            return "вы не ответили";
+        }
+
         return occurrence.ResponseType switch
         {
             EasResponseType.Accepted => "вы приняли",
             EasResponseType.Tentative => "под вопросом",
             EasResponseType.Declined => "вы отклонили",
-            EasResponseType.NotResponded or EasResponseType.None when occurrence.IsMeeting && !occurrence.IsOrganizer
-                => "вы не ответили",
             _ => null
         };
     }
@@ -219,6 +275,8 @@ public sealed class StreamMail : INotifyPropertyChanged
 
     public required bool Robot { get; init; }
 
+    public IReadOnlyList<string> Words { get; init; } = Array.Empty<string>();
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public bool IsUnread => !_isRead;
@@ -260,7 +318,11 @@ public sealed class StreamMail : INotifyPropertyChanged
         Raise(nameof(LineWeight));
     }
 
-    public static StreamMail Create(EasMessage message, DateTimeOffset now, bool unread)
+    public static StreamMail Create(
+        EasMessage message,
+        DateTimeOffset now,
+        bool unread,
+        IReadOnlyList<string>? words = null)
     {
         var received = (message.DateReceived ?? now).ToLocalTime();
         var sender = ShortSender(message.DisplaySender);
@@ -272,6 +334,7 @@ public sealed class StreamMail : INotifyPropertyChanged
             Line = $"{sender} — {message.DisplaySubject}",
             Time = received.ToString("HH:mm"),
             Robot = !message.DisplaySender.Contains(' '),
+            Words = words ?? Array.Empty<string>(),
             Body = string.IsNullOrWhiteSpace(message.Body)
                 ? message.Preview ?? "(пустое письмо)"
                 : message.Body,

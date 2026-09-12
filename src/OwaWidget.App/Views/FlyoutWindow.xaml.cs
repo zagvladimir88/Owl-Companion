@@ -34,6 +34,9 @@ public partial class FlyoutWindow : FluentWindow
     private readonly HashSet<string> _bodyLoaded = new(StringComparer.Ordinal);
     private bool _attendeesExpanded;
     private bool _offline;
+    private bool _searchOpen;
+    private bool _ready;
+    private string _filter = string.Empty;
 
     public FlyoutWindow(AppSettings settings)
     {
@@ -42,6 +45,9 @@ public partial class FlyoutWindow : FluentWindow
 
         BrandText.Text = Tracking.Wide("OWL");
         DetailAgendaLabel.Text = Tracking.Wide("ПОВЕСТКА");
+        FiltersLabel.Text = Tracking.Wide("БЫСТРЫЕ ФИЛЬТРЫ");
+        RecentLabel.Text = Tracking.Wide("НЕДАВНИЕ ЗАПРОСЫ");
+        SuggestLabel.Text = Tracking.Wide("ПОПРОБУЙТЕ");
 
         _ticker = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
         _ticker.Tick += (_, _) => Rebuild();
@@ -49,6 +55,8 @@ public partial class FlyoutWindow : FluentWindow
         Deactivated += (_, _) => Hide();
         IsVisibleChanged += OnVisibleChanged;
         PreviewKeyDown += OnPreviewKeyDown;
+
+        _ready = true;
     }
 
     public event Action<string>? MarkReadRequested;
@@ -108,7 +116,7 @@ public partial class FlyoutWindow : FluentWindow
         ClockText.Text = now.ToString("ddd d MMM", Russian) + $" · {now:HH:mm}";
 
         var words = Tokenize(_query);
-        var searching = words.Length > 0;
+        var searching = _searchOpen && (words.Length > 0 || _filter.Length > 0);
 
         var meetings = _occurrences
             .Where(o => o.End >= now && !o.AllDay)
@@ -134,9 +142,13 @@ public partial class FlyoutWindow : FluentWindow
 
         MailPeek.ItemsSource = peek.Select(m => StreamMail.Create(m, now, IsUnreadMessage(m))).ToList();
 
-        if (searching)
+        SearchTools.Visibility = _searchOpen ? Visibility.Visible : Visibility.Collapsed;
+        MailFooter.Visibility = searching ? Visibility.Collapsed : Visibility.Visible;
+        SearchFooter.Visibility = searching ? Visibility.Visible : Visibility.Collapsed;
+
+        if (_searchOpen)
         {
-            RenderSearch(meetings, mail, words, now);
+            RenderSearch(mail, words, now, searching);
             return;
         }
 
@@ -212,6 +224,8 @@ public partial class FlyoutWindow : FluentWindow
 
         StreamList.ItemsSource = items;
         EmptyBlock.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        EmptyClear.Visibility = Visibility.Collapsed;
+        SuggestBlock.Visibility = Visibility.Collapsed;
         EmptyTitle.Text = "Впереди пусто";
         EmptyDetail.Text = "Ни одной встречи в ближайшие недели.";
     }
@@ -313,42 +327,178 @@ public partial class FlyoutWindow : FluentWindow
     }
 
     private void RenderSearch(
-        IReadOnlyList<EasOccurrence> meetings,
         IReadOnlyList<EasMessage> mail,
         string[] words,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        bool active)
     {
         HeroCard.Visibility = Visibility.Collapsed;
         CalmCard.Visibility = Visibility.Collapsed;
 
-        var foundMeetings = meetings
-            .Where(o => Matches(SearchTextOf(o), words))
-            .Take(20)
+        PaintChip(FilterToday, FilterTodayText, _filter == "today");
+        PaintChip(FilterWeek, FilterWeekText, _filter == "week");
+        PaintChip(FilterOpen, FilterOpenText, _filter == "unanswered");
+
+        var recent = _settings.RecentSearches.Take(4).ToList();
+        RecentList.ItemsSource = recent;
+        RecentBlock.Visibility = recent.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        SearchIdle.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
+        FiltersLabel.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
+
+        var pool = _occurrences
+            .Where(o => !o.AllDay && (o.End >= now || o.Start.ToLocalTime().Date == now.Date))
+            .OrderBy(o => o.Start)
+            .ToList();
+
+        SearchScope.Text =
+            $"Ищем по {pool.Count} {Format.Plural(pool.Count, "встрече", "встречам", "встречам")} " +
+            $"и {mail.Count} {Format.Plural(mail.Count, "письму", "письмам", "письмам")}: " +
+            "тема, участники, организатор, отправитель. Календарь загружен на 30 дней вперёд, " +
+            "прошедшее — только за сегодня.";
+
+        if (!active)
+        {
+            StreamList.ItemsSource = Array.Empty<object>();
+            EmptyBlock.Visibility = Visibility.Collapsed;
+            SearchCount.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var foundMeetings = pool
+            .Where(o => PassesFilter(o, now) && (words.Length == 0 || Matches(SearchTextOf(o), words)))
             .ToList();
 
         var foundMail = mail
-            .Where(m => Matches(SearchTextOf(m), words))
+            .Where(m => PassesFilter(m, now) && (words.Length == 0 || Matches(SearchTextOf(m), words)))
             .Take(20)
             .ToList();
 
         var items = new List<object>();
+        var today = now.Date;
 
-        if (foundMeetings.Count > 0)
+        foreach (var group in foundMeetings.GroupBy(o => o.Start.ToLocalTime().Date).OrderBy(g => g.Key))
         {
-            items.Add(Section("ВСТРЕЧИ"));
-            items.AddRange(foundMeetings.Select(o => StreamMeeting.Create(o, now, showLead: false)));
+            items.Add(new StreamSection
+            {
+                Label = Tracking.Wide(DayLabel(group.Key, today)),
+                LabelBrush = Palette.Ink
+            });
+
+            items.AddRange(group
+                .OrderBy(o => o.End <= now)
+                .ThenBy(o => o.Start)
+                .Select(o => StreamMeeting.CreateForSearch(o, now, words)));
         }
 
         if (foundMail.Count > 0)
         {
             items.Add(Section("ПОЧТА"));
-            items.AddRange(foundMail.Select(m => StreamMail.Create(m, now, IsUnreadMessage(m))));
+            items.AddRange(foundMail.Select(m => StreamMail.Create(m, now, IsUnreadMessage(m), words)));
         }
 
         StreamList.ItemsSource = items;
-        EmptyBlock.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        EmptyTitle.Text = "Ничего не найдено";
-        EmptyDetail.Text = "Попробуйте изменить запрос.";
+
+        var total = foundMeetings.Count + foundMail.Count;
+        SearchCount.Text = total.ToString();
+        SearchCount.Visibility = Visibility.Visible;
+
+        SearchTally.Text =
+            $"{foundMeetings.Count} {Format.Plural(foundMeetings.Count, "встреча", "встречи", "встреч")} " +
+            $"из {pool.Count} · {foundMail.Count} " +
+            $"{Format.Plural(foundMail.Count, "письмо", "письма", "писем")} из {mail.Count}";
+
+        if (total > 0)
+        {
+            EmptyBlock.Visibility = Visibility.Collapsed;
+            SuggestBlock.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        EmptyBlock.Visibility = Visibility.Visible;
+        EmptyClear.Visibility = Visibility.Visible;
+        EmptyTitle.Text = "Ничего не нашлось";
+        EmptyDetail.Text = _filter.Length > 0 && words.Length == 0
+            ? "Под выбранный фильтр ничего не подходит."
+            : $"Ни в {pool.Count} {Format.Plural(pool.Count, "встрече", "встречах", "встречах")}, " +
+              $"ни в {mail.Count} {Format.Plural(mail.Count, "письме", "письмах", "письмах")}. " +
+              "Поиск не заглядывает дальше загруженного окна.";
+
+        var hints = Suggestions(pool, mail, words);
+        SuggestList.ItemsSource = hints;
+        SuggestBlock.Visibility = hints.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private static string DayLabel(DateTime date, DateTime today)
+    {
+        if (date == today)
+        {
+            return "СЕГОДНЯ";
+        }
+
+        return date == today.AddDays(1)
+            ? "ЗАВТРА"
+            : date.ToString("dddd, d MMMM", Russian).ToUpperInvariant();
+    }
+
+    private bool PassesFilter(EasOccurrence occurrence, DateTimeOffset now)
+    {
+        var start = occurrence.Start.ToLocalTime();
+
+        return _filter switch
+        {
+            "today" => start.Date == now.Date,
+            "week" => start.Date >= now.Date && start.Date <= WeekStart(now).AddDays(6),
+            "unanswered" => occurrence.NeedsResponse,
+            _ => true
+        };
+    }
+
+    private bool PassesFilter(EasMessage message, DateTimeOffset now)
+    {
+        var received = (message.DateReceived ?? now).ToLocalTime();
+
+        return _filter switch
+        {
+            "today" => received.Date == now.Date,
+            "week" => received.Date >= WeekStart(now),
+            "unanswered" => message.IsMeetingRequest,
+            _ => true
+        };
+    }
+
+    private static DateTime WeekStart(DateTimeOffset now)
+    {
+        return now.Date.AddDays(-(((int)now.DayOfWeek + 6) % 7));
+    }
+
+    private static List<string> Suggestions(
+        IReadOnlyList<EasOccurrence> pool,
+        IReadOnlyList<EasMessage> mail,
+        string[] words)
+    {
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var subject in pool.Select(o => o.Subject).Concat(mail.Select(m => m.DisplaySubject)))
+        {
+            foreach (var word in Tokenize(subject).Distinct())
+            {
+                if (word.Length < 5 || words.Contains(word))
+                {
+                    continue;
+                }
+
+                counts[word] = counts.GetValueOrDefault(word) + 1;
+            }
+        }
+
+        return counts
+            .Where(pair => pair.Value > 1)
+            .OrderByDescending(pair => pair.Value)
+            .ThenBy(pair => pair.Key, StringComparer.Ordinal)
+            .Take(3)
+            .Select(pair => pair.Key)
+            .ToList();
     }
 
     private static StreamSection Section(string label)
@@ -414,10 +564,16 @@ public partial class FlyoutWindow : FluentWindow
         return string.Join(' ', m.DisplaySubject, m.DisplaySender, m.FromAddress, m.Preview);
     }
 
+    private static readonly char[] Separators =
+    {
+        ' ', '\t', '\n', '\r', ',', '.', ';', ':', '(', ')', '[', ']', '"', '\'', '«', '»',
+        '—', '–', '-', '>', '<', '/', '\\', '|', '!', '?', '+', '*', '#'
+    };
+
     private static string[] Tokenize(string query)
     {
         return query
-            .Split(new[] { ' ', '\t', ',', '.', ';', ':', '(', ')', '"', '\'' }, StringSplitOptions.RemoveEmptyEntries)
+            .Split(Separators, StringSplitOptions.RemoveEmptyEntries)
             .Select(w => w.ToLowerInvariant())
             .ToArray();
     }
@@ -455,6 +611,11 @@ public partial class FlyoutWindow : FluentWindow
     {
         if (sender is FrameworkElement { DataContext: StreamMeeting row })
         {
+            if (_searchOpen)
+            {
+                RememberQuery(_query);
+            }
+
             OpenDetail(row.Occurrence);
         }
     }
@@ -473,6 +634,11 @@ public partial class FlyoutWindow : FluentWindow
     {
         if (sender is FrameworkElement { DataContext: StreamMail row })
         {
+            if (_searchOpen)
+            {
+                RememberQuery(_query);
+            }
+
             OpenLetter(row.Message);
         }
     }
@@ -892,32 +1058,118 @@ public partial class FlyoutWindow : FluentWindow
 
     private void OnToggleSearch(object sender, RoutedEventArgs e)
     {
-        if (SearchBar.Visibility == Visibility.Visible)
+        if (_searchOpen)
         {
             HideSearch();
             return;
         }
 
-        SearchBar.Visibility = Visibility.Visible;
+        _searchOpen = true;
+        HeaderIdle.Visibility = Visibility.Collapsed;
+        SearchRow.Visibility = Visibility.Visible;
+
+        SearchShift.BeginAnimation(
+            TranslateTransform.XProperty,
+            new DoubleAnimation(16, 0, TimeSpan.FromMilliseconds(140))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            });
+
+        SearchRow.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(140)));
+
+        Rebuild();
         SearchBox.Focus();
     }
 
+    private void OnCloseSearch(object sender, MouseButtonEventArgs e) => HideSearch();
+
     private void HideSearch()
     {
-        SearchBar.Visibility = Visibility.Collapsed;
-
-        if (_query.Length > 0)
+        if (!_searchOpen)
         {
-            SearchBox.Text = string.Empty;
-            _query = string.Empty;
-            Rebuild();
+            return;
         }
+
+        _searchOpen = false;
+        _filter = string.Empty;
+        SearchRow.Visibility = Visibility.Collapsed;
+        HeaderIdle.Visibility = Visibility.Visible;
+
+        SearchBox.Text = string.Empty;
+        _query = string.Empty;
+        Rebuild();
     }
 
     private void OnSearchChanged(object sender, RoutedEventArgs e)
     {
+        if (!_ready)
+        {
+            return;
+        }
+
         _query = SearchBox.Text ?? string.Empty;
+        SearchPlaceholder.Visibility = _query.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         Rebuild();
+    }
+
+    private void OnSearchKey(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+        {
+            return;
+        }
+
+        RememberQuery(_query);
+        Rebuild();
+        e.Handled = true;
+    }
+
+    private void OnSearchFilter(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: string tag })
+        {
+            _filter = _filter == tag ? string.Empty : tag;
+            Rebuild();
+        }
+    }
+
+    private void OnUseQuery(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: string query })
+        {
+            SearchBox.Text = query;
+            SearchBox.CaretIndex = query.Length;
+            SearchBox.Focus();
+        }
+    }
+
+    private void OnClearSearch(object sender, MouseButtonEventArgs e)
+    {
+        _filter = string.Empty;
+        SearchBox.Text = string.Empty;
+        Rebuild();
+        SearchBox.Focus();
+    }
+
+    private void RememberQuery(string raw)
+    {
+        var query = raw.Trim();
+
+        if (query.Length < 2)
+        {
+            return;
+        }
+
+        var recent = _settings.RecentSearches;
+        recent.RemoveAll(item => string.Equals(item, query, StringComparison.OrdinalIgnoreCase));
+        recent.Insert(0, query);
+
+        while (recent.Count > 4)
+        {
+            recent.RemoveAt(recent.Count - 1);
+        }
+
+        AppStorage.Save(_settings);
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
@@ -939,7 +1191,7 @@ public partial class FlyoutWindow : FluentWindow
         {
             CloseDetail();
         }
-        else if (SearchBar.Visibility == Visibility.Visible)
+        else if (_searchOpen)
         {
             HideSearch();
         }

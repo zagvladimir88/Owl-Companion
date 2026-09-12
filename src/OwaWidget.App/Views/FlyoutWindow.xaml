@@ -36,6 +36,8 @@
         <Geometry x:Key="SearchIcon">M8,2.5 A5.5,5.5 0 1 1 7.99,2.5 Z M12,12 L16,16</Geometry>
         <Geometry x:Key="CopyIcon">M6,6 L15,6 L15,15 L6,15 Z M12,3 L3,3 L3,12</Geometry>
         <Geometry x:Key="ChevronDown">M4,6.5 L9,11.5 L14,6.5</Geometry>
+        <Geometry x:Key="CloseIcon">M4,4 L14,14 M14,4 L4,14</Geometry>
+        <Geometry x:Key="ClockIcon">M9,2.5 A6.5,6.5 0 1 1 8.99,2.5 Z M9,5.2 L9,9.2 L11.8,10.8</Geometry>
 
         <Style x:Key="SelectableBody" TargetType="FlowDocumentScrollViewer">
             <Setter Property="Background" Value="Transparent" />
@@ -48,6 +50,31 @@
             <Setter Property="SelectionBrush" Value="{StaticResource Accent}" />
             <Setter Property="SelectionOpacity" Value="0.22" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        </Style>
+
+        <Style x:Key="BareInput" TargetType="TextBox">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{StaticResource Ink}" />
+            <Setter Property="CaretBrush" Value="{StaticResource Accent}" />
+            <Setter Property="SelectionBrush" Value="{StaticResource Accent}" />
+            <Setter Property="SelectionOpacity" Value="0.22" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <ScrollViewer x:Name="PART_ContentHost" Background="Transparent" Focusable="False"
+                                      Margin="0" Padding="0" HorizontalScrollBarVisibility="Hidden"
+                                      VerticalScrollBarVisibility="Hidden" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="IconBox" TargetType="Border">
@@ -314,9 +341,10 @@
                                Foreground="{StaticResource Ink}" VerticalAlignment="Center" Margin="0,0,14,0"
                                Visibility="{Binding TimeColumnVisibility}" />
                     <StackPanel Grid.Column="1" Margin="0,0,12,0" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold"
-                                   Foreground="{StaticResource Ink}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding Meta}" FontSize="12" Foreground="{StaticResource Secondary}"
+                        <TextBlock views:Highlight.Text="{Binding Title}" views:Highlight.Words="{Binding Words}"
+                                   FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{Binding TitleBrush}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Meta}" FontSize="12" Foreground="{Binding MetaBrush}"
                                    Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                     <Border Grid.Column="2" Style="{StaticResource IconBox}" Visibility="{Binding JoinVisibility}"
@@ -338,6 +366,42 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Cursor" Value="Hand" />
         </Style>
+
+        <Style x:Key="LeftChip" TargetType="Border">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="11,0" />
+            <Setter Property="Margin" Value="0,0,6,6" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+            <Setter Property="Background" Value="{StaticResource Card}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#FDF1EE" />
+                    <Setter Property="BorderBrush" Value="#E9B3A6" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <DataTemplate x:Key="RecentQueryTemplate">
+            <Border Style="{StaticResource LeftChip}" MouseLeftButtonUp="OnUseQuery">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Path Data="{StaticResource ClockIcon}" Stroke="{StaticResource Faint}" StrokeThickness="1.4"
+                          StrokeLineJoin="Round" Stretch="Uniform" Width="13" Height="13"
+                          VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding}" FontSize="12" Foreground="{StaticResource Ink}"
+                               Margin="8,0,0,0" VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SuggestQueryTemplate">
+            <Border Style="{StaticResource LeftChip}" MouseLeftButtonUp="OnUseQuery">
+                <TextBlock Text="{Binding}" FontSize="12" Foreground="{StaticResource Ink}"
+                           VerticalAlignment="Center" />
+            </Border>
+        </DataTemplate>
 
         <DataTemplate x:Key="MailSectionTemplate">
             <TextBlock Text="{Binding Label}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource Secondary}"
@@ -466,7 +530,8 @@
                     </Grid.ColumnDefinitions>
                     <Ellipse Grid.Column="0" Width="6" Height="6" Fill="{StaticResource Accent}"
                              VerticalAlignment="Center" Visibility="{Binding DotVisibility}" />
-                    <TextBlock Grid.Column="1" Text="{Binding Line}" FontSize="13" Margin="10,0,10,0"
+                    <TextBlock Grid.Column="1" views:Highlight.Text="{Binding Line}"
+                               views:Highlight.Words="{Binding Words}" FontSize="13" Margin="10,0,10,0"
                                Foreground="{Binding LineBrush}" FontWeight="{Binding LineWeight}"
                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                     <TextBlock Grid.Column="2" Text="{Binding Time}" FontSize="11"
@@ -489,18 +554,61 @@
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0" Margin="22,0">
-                <TextBlock x:Name="BrandText" FontSize="12" FontWeight="Bold" Foreground="{StaticResource Ink}"
-                           VerticalAlignment="Center" />
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <TextBlock x:Name="ClockText" FontSize="12" Foreground="{StaticResource Secondary}"
+                <Grid x:Name="HeaderIdle">
+                    <TextBlock x:Name="BrandText" FontSize="12" FontWeight="Bold" Foreground="{StaticResource Ink}"
                                VerticalAlignment="Center" />
-                    <Border Style="{StaticResource IconBox}" Width="28" Height="28" Margin="12,0,0,0"
-                            Background="Transparent" BorderThickness="0" MouseLeftButtonUp="OnToggleSearch"
-                            ToolTip="Поиск">
-                        <Path Data="{StaticResource SearchIcon}" Stroke="{StaticResource Secondary}"
-                              StrokeThickness="1.6" Stretch="Uniform" Width="15" Height="15" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock x:Name="ClockText" FontSize="12" Foreground="{StaticResource Secondary}"
+                                   VerticalAlignment="Center" />
+                        <Border x:Name="SearchToggle" Style="{StaticResource IconBox}" Width="28" Height="28"
+                                Margin="12,0,0,0" Background="Transparent" BorderThickness="0"
+                                MouseLeftButtonUp="OnToggleSearch" ToolTip="Поиск">
+                            <Path Data="{StaticResource SearchIcon}" Stroke="{StaticResource Secondary}"
+                                  StrokeThickness="1.6" Stretch="Uniform" Width="15" Height="15" />
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <Grid x:Name="SearchRow" VerticalAlignment="Center" Visibility="Collapsed" Opacity="0">
+                    <Grid.RenderTransform>
+                        <TranslateTransform x:Name="SearchShift" />
+                    </Grid.RenderTransform>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Height="32" CornerRadius="8" Background="{StaticResource Card}"
+                            BorderBrush="{StaticResource Accent}" BorderThickness="1">
+                        <Grid Margin="10,0,10,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Path Grid.Column="0" Data="{StaticResource SearchIcon}" Stroke="{StaticResource Faint}"
+                                  StrokeThickness="1.6" Stretch="Uniform" Width="13" Height="13"
+                                  VerticalAlignment="Center" />
+                            <Grid Grid.Column="1" Margin="9,0,8,0">
+                                <TextBlock x:Name="SearchPlaceholder" Text="Тема, участник, отправитель"
+                                           FontSize="13" Foreground="{StaticResource Faint}"
+                                           VerticalAlignment="Center" IsHitTestVisible="False" />
+                                <TextBox x:Name="SearchBox" Style="{StaticResource BareInput}"
+                                         TextChanged="OnSearchChanged" KeyDown="OnSearchKey" />
+                            </Grid>
+                            <TextBlock x:Name="SearchCount" Grid.Column="2" FontSize="12"
+                                       Foreground="{StaticResource Faint}" VerticalAlignment="Center"
+                                       Visibility="Collapsed" />
+                        </Grid>
                     </Border>
-                </StackPanel>
+
+                    <Border Grid.Column="1" Style="{StaticResource IconBox}" Width="28" Height="28"
+                            Margin="10,0,0,0" Background="Transparent" BorderThickness="0"
+                            MouseLeftButtonUp="OnCloseSearch" ToolTip="Закрыть поиск">
+                        <Path Data="{StaticResource CloseIcon}" Stroke="{StaticResource Secondary}"
+                              StrokeThickness="1.6" Stretch="Uniform" Width="13" Height="13" />
+                    </Border>
+                </Grid>
             </Grid>
 
             <Border Grid.Row="1" x:Name="OfflineBar" Margin="22,0,22,10" Padding="12,9" CornerRadius="8"
@@ -590,6 +698,42 @@
                 </StackPanel>
             </Border>
 
+            <StackPanel Grid.Row="2" x:Name="SearchTools" Margin="22,0,22,0" Visibility="Collapsed">
+                <TextBlock x:Name="FiltersLabel" FontSize="11" FontWeight="Bold"
+                           Foreground="{StaticResource Secondary}" Margin="0,0,0,7" />
+                <WrapPanel>
+                    <Border x:Name="FilterToday" Style="{StaticResource LeftChip}" Tag="today"
+                            MouseLeftButtonUp="OnSearchFilter">
+                        <TextBlock x:Name="FilterTodayText" Text="Сегодня" FontSize="12" VerticalAlignment="Center" />
+                    </Border>
+                    <Border x:Name="FilterWeek" Style="{StaticResource LeftChip}" Tag="week"
+                            MouseLeftButtonUp="OnSearchFilter">
+                        <TextBlock x:Name="FilterWeekText" Text="Эта неделя" FontSize="12" VerticalAlignment="Center" />
+                    </Border>
+                    <Border x:Name="FilterOpen" Style="{StaticResource LeftChip}" Tag="unanswered"
+                            MouseLeftButtonUp="OnSearchFilter">
+                        <TextBlock x:Name="FilterOpenText" Text="Вы не ответили" FontSize="12"
+                                   VerticalAlignment="Center" />
+                    </Border>
+                </WrapPanel>
+
+                <StackPanel x:Name="SearchIdle">
+                    <StackPanel x:Name="RecentBlock">
+                        <TextBlock x:Name="RecentLabel" FontSize="11" FontWeight="Bold"
+                                   Foreground="{StaticResource Secondary}" Margin="0,9,0,7" />
+                        <ItemsControl x:Name="RecentList" ItemTemplate="{StaticResource RecentQueryTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
+                    <TextBlock x:Name="SearchScope" FontSize="12" Foreground="{StaticResource Tertiary}"
+                               TextWrapping="Wrap" LineHeight="17" Margin="0,5,0,0" />
+                </StackPanel>
+            </StackPanel>
+
             <Grid Grid.Row="3" Margin="22,0,12,0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
                     <ItemsControl x:Name="StreamList" Margin="0,0,10,12">
@@ -602,14 +746,50 @@
                     </ItemsControl>
                 </ScrollViewer>
 
-                <StackPanel x:Name="EmptyBlock" VerticalAlignment="Center" Visibility="Collapsed" Margin="0,0,10,40">
-                    <TextBlock x:Name="EmptyTitle" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Ink}" />
-                    <TextBlock x:Name="EmptyDetail" FontSize="13" Foreground="{StaticResource Secondary}"
-                               TextWrapping="Wrap" Margin="0,6,0,0" LineHeight="19" />
+                <StackPanel x:Name="EmptyBlock" VerticalAlignment="Top" Visibility="Collapsed" Margin="0,2,10,0">
+                    <Border Background="{StaticResource Card}" BorderBrush="{StaticResource Line}"
+                            BorderThickness="1" CornerRadius="10" Padding="16,14,16,16">
+                        <StackPanel>
+                            <TextBlock x:Name="EmptyTitle" FontSize="17" FontWeight="SemiBold"
+                                       Foreground="{StaticResource Ink}" TextWrapping="Wrap" />
+                            <TextBlock x:Name="EmptyDetail" FontSize="13" Foreground="{StaticResource Secondary}"
+                                       TextWrapping="Wrap" Margin="0,7,0,0" LineHeight="19" />
+                            <Border x:Name="EmptyClear" Height="32" Padding="13,0" CornerRadius="8"
+                                    HorizontalAlignment="Left" Margin="0,14,0,0" Background="{StaticResource Card}"
+                                    BorderBrush="{StaticResource Line}" BorderThickness="1" Cursor="Hand"
+                                    Visibility="Collapsed" MouseLeftButtonUp="OnClearSearch">
+                                <TextBlock Text="Очистить" FontSize="12" Foreground="{StaticResource Ink}"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <StackPanel x:Name="SuggestBlock" Visibility="Collapsed">
+                        <TextBlock x:Name="SuggestLabel" FontSize="11" FontWeight="Bold"
+                                   Foreground="{StaticResource Secondary}" Margin="2,15,0,7" />
+                        <ItemsControl x:Name="SuggestList" ItemTemplate="{StaticResource SuggestQueryTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
                 </StackPanel>
             </Grid>
 
-            <Border Grid.Row="4" Background="#E9E6E3" BorderBrush="{StaticResource Ink}" BorderThickness="0,2,0,0"
+            <Border Grid.Row="4" x:Name="SearchFooter" Background="#E9E6E3" BorderBrush="{StaticResource Ink}"
+                    BorderThickness="0,2,0,0" Padding="22,11,22,12" Visibility="Collapsed">
+                <Grid>
+                    <TextBlock x:Name="SearchTally" FontSize="12" Foreground="{StaticResource Ink}"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+                    <TextBlock Text="Esc — закрыть поиск" FontSize="11" Foreground="{StaticResource Secondary}"
+                               HorizontalAlignment="Right" VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="4" x:Name="MailFooter" Background="#E9E6E3" BorderBrush="{StaticResource Ink}"
+                    BorderThickness="0,2,0,0"
                     Padding="22,11,22,12" Cursor="Hand" MouseLeftButtonUp="OnOpenMailPanel">
                 <StackPanel>
                     <Grid>
@@ -641,12 +821,6 @@
             <Border Grid.Row="5" Padding="22,0">
                 <TextBlock x:Name="StatusText" FontSize="11" Foreground="{StaticResource Secondary}"
                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-            </Border>
-
-            <Border x:Name="SearchBar" Grid.Row="1" Grid.RowSpan="2" Margin="22,0,22,0" VerticalAlignment="Top"
-                    Visibility="Collapsed">
-                <ui:TextBox x:Name="SearchBox" PlaceholderText="Название, участники, отправитель" FontSize="13"
-                            TextChanged="OnSearchChanged" />
             </Border>
 
             <Border x:Name="DetailPanel" Grid.RowSpan="6" Background="{StaticResource Surface}"

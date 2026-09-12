@@ -29,6 +29,8 @@ public sealed class AppSettings
 
     public List<string> IgnoredSenders { get; set; } = new();
 
+    public List<string> RecentSearches { get; set; } = new();
+
     public bool StartWithWindows { get; set; }
 
     public bool RespectAppointmentReminder { get; set; } = true;
