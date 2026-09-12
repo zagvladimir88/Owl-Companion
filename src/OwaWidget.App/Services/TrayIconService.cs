@@ -19,15 +19,24 @@ public sealed class TrayIconService : IDisposable
     private readonly ContextMenu _menu;
     private readonly MenuItem _pauseItem;
     private readonly MenuItem _startupItem;
+    private readonly MenuItem _updateItem;
     private readonly Icon _baseIcon;
 
     private Icon? _currentIcon;
     private IntPtr _currentHandle;
     private string? _renderKey;
 
-    public TrayIconService()
+    public TrayIconService(string version)
     {
         _baseIcon = LoadBaseIcon();
+
+        _updateItem = new MenuItem
+        {
+            Header = "Перезапустить и обновить",
+            Visibility = Visibility.Collapsed
+        };
+
+        _updateItem.Click += (_, _) => UpdateRestartRequested?.Invoke();
 
         _pauseItem = new MenuItem { Header = "Приостановить уведомления", IsCheckable = true };
         _pauseItem.Click += (_, _) => PauseToggled?.Invoke(_pauseItem.IsChecked);
@@ -47,6 +56,8 @@ public sealed class TrayIconService : IDisposable
         _menu.Items.Add(Item("Сбросить кэш", () => ResetCacheRequested?.Invoke()));
         _menu.Items.Add(new Separator());
         _menu.Items.Add(Item("Учётные данные…", () => SettingsRequested?.Invoke()));
+        _menu.Items.Add(_updateItem);
+        _menu.Items.Add(new MenuItem { Header = $"Owl {version}", IsEnabled = false });
         _menu.Items.Add(Item("Выход", () => ExitRequested?.Invoke()));
 
         _notifyIcon = new NotifyIcon
@@ -87,6 +98,14 @@ public sealed class TrayIconService : IDisposable
     public event Action<bool>? StartWithWindowsToggled;
 
     public event Action? ResetCacheRequested;
+
+    public event Action? UpdateRestartRequested;
+
+    public void ShowUpdateReady(string version)
+    {
+        _updateItem.Header = $"Перезапустить и обновить до {version}";
+        _updateItem.Visibility = Visibility.Visible;
+    }
 
     public bool StartWithWindows
     {
