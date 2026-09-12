@@ -23,6 +23,7 @@ public sealed class TrayIconService : IDisposable
 
     private Icon? _currentIcon;
     private IntPtr _currentHandle;
+    private string? _renderKey;
 
     public TrayIconService()
     {
@@ -95,26 +96,35 @@ public sealed class TrayIconService : IDisposable
 
     public void Update(int unreadCount, string status)
     {
-        var previous = _currentIcon;
-        var previousHandle = _currentHandle;
+        Update(new TrayPresentation(TrayState.Free, 0, $"Owl\n{status}"));
+    }
 
-        var icon = BuildIcon(unreadCount);
+    public void Update(TrayPresentation presentation)
+    {
+        var key = $"{presentation.State}|{Math.Round(presentation.Fill * 12)}";
 
-        _notifyIcon.Icon = icon;
-        _currentIcon = icon;
-
-        var tooltip = unreadCount > 0
-            ? $"OWA Widget · непрочитанных: {unreadCount}\n{status}"
-            : $"OWA Widget\n{status}";
-
-        _notifyIcon.Text = tooltip.Length > 62 ? tooltip[..62] : tooltip;
-
-        previous?.Dispose();
-
-        if (previousHandle != IntPtr.Zero && previousHandle != _currentHandle)
+        if (key != _renderKey)
         {
-            DestroyIcon(previousHandle);
+            _renderKey = key;
+
+            var previous = _currentIcon;
+            var previousHandle = _currentHandle;
+
+            var icon = BuildIcon(presentation);
+            _notifyIcon.Icon = icon;
+            _currentIcon = icon;
+
+            previous?.Dispose();
+
+            if (previousHandle != IntPtr.Zero && previousHandle != _currentHandle)
+            {
+                DestroyIcon(previousHandle);
+            }
         }
+
+        _notifyIcon.Text = presentation.Tooltip.Length > 62
+            ? presentation.Tooltip[..62]
+            : presentation.Tooltip;
     }
 
     public void Dispose()
@@ -149,41 +159,12 @@ public sealed class TrayIconService : IDisposable
         return item;
     }
 
-    private Icon BuildIcon(int unreadCount)
+
+    private Icon BuildIcon(TrayPresentation presentation)
     {
-        const int size = 32;
+        var size = Math.Max(16, System.Windows.Forms.SystemInformation.SmallIconSize.Width);
 
-        using var bitmap = new Bitmap(size, size);
-
-        using (var graphics = Graphics.FromImage(bitmap))
-        {
-            graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-            graphics.Clear(Color.Transparent);
-            graphics.DrawIcon(_baseIcon, new Rectangle(0, 0, size, size));
-
-            if (unreadCount > 0)
-            {
-                var label = unreadCount > 99 ? "99+" : unreadCount.ToString();
-                var diameter = label.Length > 2 ? 21 : 18;
-                var badge = new Rectangle(size - diameter - 1, size - diameter - 1, diameter, diameter);
-
-                using var badgeBrush = new SolidBrush(Color.FromArgb(255, 214, 44, 44));
-                using var borderPen = new Pen(Color.FromArgb(255, 22, 22, 22), 1.6f);
-                graphics.FillEllipse(badgeBrush, badge);
-                graphics.DrawEllipse(borderPen, badge);
-
-                using var font = new Font("Segoe UI", label.Length > 2 ? 8.5f : 11f, FontStyle.Bold, GraphicsUnit.Pixel);
-                using var textBrush = new SolidBrush(Color.White);
-                using var format = new StringFormat
-                {
-                    Alignment = StringAlignment.Center,
-                    LineAlignment = StringAlignment.Center
-                };
-
-                graphics.DrawString(label, font, textBrush, badge, format);
-            }
-        }
+        using var bitmap = TrayIconPainter.Paint(presentation, size);
 
         _currentHandle = bitmap.GetHicon();
         return Icon.FromHandle(_currentHandle);

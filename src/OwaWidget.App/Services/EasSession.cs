@@ -72,6 +72,100 @@ public sealed class EasSession : IDisposable
         }
     }
 
+    public async Task<string?> FetchBodyAsync(
+        string collectionId,
+        string serverId,
+        CancellationToken cancellationToken = default)
+    {
+        if (_client is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var result = await RunWithProvisioningAsync(
+                () => ItemOperationsCommand.FetchAsync(Client, collectionId, serverId, 32768, cancellationToken),
+                cancellationToken);
+
+            if (result.Status != 1 || result.Properties is null)
+            {
+                Log.Info($"fetch body: status={result.Status}, no properties");
+                return null;
+            }
+
+            var body = result.Properties.Child("Body")?.ChildText("Data")
+                       ?? result.Properties.ChildText("Body");
+
+            if (string.IsNullOrEmpty(body))
+            {
+                return null;
+            }
+
+            lock (_gate)
+            {
+                var index = _messages.FindIndex(m => m.ServerId == serverId);
+                if (index >= 0)
+                {
+                    _messages[index] = _messages[index] with { Body = body };
+                }
+
+                var appointment = _appointments.FindIndex(a => a.ServerId == serverId);
+                if (appointment >= 0)
+                {
+                    _appointments[appointment] = _appointments[appointment] with { Body = body };
+                }
+            }
+
+            return body;
+        }
+        catch (Exception exception)
+        {
+            Log.Error("fetch body failed", exception);
+            return null;
+        }
+    }
+
+    public async Task<bool> RespondToMeetingAsync(
+        string serverId,
+        DateTimeOffset? instanceStart,
+        MeetingUserResponse response,
+        bool fromInbox,
+        CancellationToken cancellationToken = default)
+    {
+        var collectionId = fromInbox ? _state.InboxId : _state.CalendarId;
+
+        if (_client is null || collectionId is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            var result = await RunWithProvisioningAsync(
+                () => MeetingResponseCommand.ExecuteAsync(Client, new MeetingResponseRequest
+                {
+                    CollectionId = collectionId,
+                    RequestId = serverId,
+                    Response = response,
+                    InstanceId = instanceStart
+                }, cancellationToken),
+                cancellationToken);
+
+            Log.Info($"meeting response {response} accepted, calendarId={result.CalendarId ?? "-"}");
+
+            await DrainCalendarAsync(cancellationToken);
+            await DrainMailAsync(notify: false, cancellationToken);
+
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Log.Error($"meeting response {response} failed", exception);
+            return false;
+        }
+    }
+
     public void PrimeFromCache()
     {
         var cachedMail = CacheStore.LoadMail(_state);

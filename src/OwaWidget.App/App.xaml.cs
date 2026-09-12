@@ -3,6 +3,7 @@ using System.Windows;
 using Microsoft.Toolkit.Uwp.Notifications;
 using OwaWidget.App.Services;
 using OwaWidget.App.Views;
+using OwaWidget.Eas.Commands;
 using OwaWidget.Eas.Models;
 using OwaWidget.Eas.Recurrence;
 using Wpf.Ui.Appearance;
@@ -25,6 +26,10 @@ public partial class App : Application
     private CancellationTokenSource? _cancellation;
     private FlyoutWindow? _flyout;
     private bool _paused;
+    private IReadOnlyList<EasOccurrence> _occurrences = Array.Empty<EasOccurrence>();
+    private string _trayStatus = "Запуск…";
+    private bool _trayOffline;
+    private System.Windows.Threading.DispatcherTimer? _trayTicker;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -52,7 +57,7 @@ public partial class App : Application
         _settings = AppStorage.LoadSettings();
         _state = AppStorage.LoadState();
 
-        ApplicationThemeManager.Apply(ApplicationTheme.Dark);
+        ApplicationThemeManager.Apply(ApplicationTheme.Light);
 
         if (CredentialStore.TryLoad(_settings.Server) is null && !ShowLogin())
         {
@@ -94,6 +99,13 @@ public partial class App : Application
         ToastNotificationManagerCompat.OnActivated += OnToastActivated;
         ShortcutInstaller.EnsureShortcut();
         ShortcutInstaller.SetStartupShortcut(_settings.StartWithWindows);
+
+        _trayTicker = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(30)
+        };
+        _trayTicker.Tick += (_, _) => RefreshTray();
+        _trayTicker.Start();
 
         Log.Info($"started, exe={Environment.ProcessPath}");
 
@@ -148,11 +160,21 @@ public partial class App : Application
         });
     }
 
+    private void RefreshTray()
+    {
+        _tray.Update(TrayStatus.Compute(
+            _occurrences,
+            _session?.UnreadCount ?? 0,
+            _trayOffline,
+            _trayStatus,
+            DateTimeOffset.Now));
+    }
+
     private void OnMailChanged()
     {
         Dispatcher.Invoke(() =>
         {
-            _tray.Update(_session?.UnreadCount ?? 0, "Подключено");
+            RefreshTray();
             _flyout?.UpdateMail(_session?.Messages ?? Array.Empty<EasMessage>());
         });
     }
@@ -161,7 +183,9 @@ public partial class App : Application
     {
         Dispatcher.Invoke(() =>
         {
+            _occurrences = occurrences;
             _reminders.Update(occurrences);
+            RefreshTray();
             _flyout?.UpdateCalendar(occurrences);
         });
     }
@@ -170,7 +194,9 @@ public partial class App : Application
     {
         Dispatcher.Invoke(() =>
         {
-            _tray.Update(_session?.UnreadCount ?? 0, message);
+            _trayStatus = message;
+            _trayOffline = status is SessionStatus.Reconnecting or SessionStatus.AuthenticationFailed;
+            RefreshTray();
             _flyout?.UpdateStatus(message);
 
             if (status == SessionStatus.AuthenticationFailed)
@@ -211,6 +237,35 @@ public partial class App : Application
                 {
                     _ = session.MarkReadAsync(serverId);
                 }
+            };
+
+            _flyout.BodyLoader = (serverId, isMail) =>
+            {
+                var session = _session;
+                var collectionId = isMail ? _state.InboxId : _state.CalendarId;
+
+                return session is null || collectionId is null
+                    ? Task.FromResult<string?>(null)
+                    : session.FetchBodyAsync(collectionId, serverId);
+            };
+
+            _flyout.MeetingResponder = (serverId, instance, reply, fromInbox) =>
+            {
+                var session = _session;
+
+                if (session is null)
+                {
+                    return Task.FromResult(false);
+                }
+
+                var response = reply switch
+                {
+                    MeetingReply.Accept => MeetingUserResponse.Accept,
+                    MeetingReply.Tentative => MeetingUserResponse.Tentative,
+                    _ => MeetingUserResponse.Decline
+                };
+
+                return session.RespondToMeetingAsync(serverId, instance, response, fromInbox);
             };
         }
 

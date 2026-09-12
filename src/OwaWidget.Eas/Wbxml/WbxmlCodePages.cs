@@ -5,6 +5,7 @@ public static class WbxmlCodePages
     public const byte AirSync = 0x00;
     public const byte Email = 0x02;
     public const byte Calendar = 0x04;
+    public const byte MeetingResponse = 0x08;
     public const byte FolderHierarchy = 0x07;
     public const byte Ping = 0x0D;
     public const byte Provision = 0x0E;
@@ -33,6 +34,7 @@ public static class WbxmlCodePages
         RegisterEmail();
         RegisterCalendar();
         RegisterFolderHierarchy();
+        RegisterMeetingResponse();
         RegisterPing();
         RegisterProvision();
         RegisterAirSyncBase();
@@ -347,6 +349,19 @@ public static class WbxmlCodePages
         Add(ComposeMail, 0x11, "ClientId");
         Add(ComposeMail, 0x12, "Status");
         Add(ComposeMail, 0x13, "AccountId");
+    }
+
+    private static void RegisterMeetingResponse()
+    {
+        Add(MeetingResponse, 0x05, "CalendarId");
+        Add(MeetingResponse, 0x06, "CollectionId");
+        Add(MeetingResponse, 0x07, "MeetingResponse");
+        Add(MeetingResponse, 0x08, "RequestId");
+        Add(MeetingResponse, 0x09, "Request");
+        Add(MeetingResponse, 0x0A, "Result");
+        Add(MeetingResponse, 0x0B, "Status");
+        Add(MeetingResponse, 0x0C, "UserResponse");
+        Add(MeetingResponse, 0x0E, "InstanceId");
     }
 
     private static void RegisterEmail2()

@@ -9,17 +9,33 @@ using FontWeight = System.Windows.FontWeight;
 
 namespace OwaWidget.App.Views;
 
+public static class Palette
+{
+    public static readonly Brush Ink = Frozen(0x20, 0x1E, 0x1D);
+    public static readonly Brush Secondary = Frozen(0x57, 0x52, 0x4F);
+    public static readonly Brush Tertiary = Frozen(0x6F, 0x6A, 0x67);
+    public static readonly Brush Faint = Frozen(0x8A, 0x84, 0x81);
+    public static readonly Brush Line = Frozen(0xCF, 0xCA, 0xC6);
+    public static readonly Brush Surface = Frozen(0xF3, 0xF2, 0xF2);
+    public static readonly Brush Card = Frozen(0xFF, 0xFF, 0xFF);
+    public static readonly Brush Accent = Frozen(0xEC, 0x30, 0x13);
+    public static readonly Brush AccentDeep = Frozen(0xB8, 0x1F, 0x05);
+
+    private static Brush Frozen(byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+        brush.Freeze();
+        return brush;
+    }
+}
+
 public sealed class StreamSection
 {
-    public required string Title { get; init; }
+    public required string Label { get; init; }
 
-    public required string DateLabel { get; init; }
+    public string Note { get; init; } = string.Empty;
 
-    public required string Summary { get; init; }
-
-    public required string Pill { get; init; }
-
-    public required Brush PillBrush { get; init; }
+    public Brush LabelBrush { get; init; } = Palette.Secondary;
 }
 
 public sealed class StreamAttendeeRow
@@ -29,83 +45,189 @@ public sealed class StreamAttendeeRow
     public required string Kind { get; init; }
 }
 
-public sealed class StreamEvent : INotifyPropertyChanged
+public sealed class StreamMeeting
 {
-    public static readonly Geometry CalendarGeometry =
-        Geometry.Parse("M4,6 L20,6 L20,20 L4,20 Z M4,10 L20,10 M8.5,3.6 L8.5,7 M15.5,3.6 L15.5,7");
+    public required EasOccurrence Occurrence { get; init; }
 
-    public static readonly Geometry MailGeometry =
-        Geometry.Parse("M3,6 L21,6 L21,18 L3,18 Z M3.6,6.8 L12,13.4 L20.4,6.8");
+    public required string Title { get; init; }
 
-    private static readonly Brush BlueTile = Frozen(Color.FromArgb(36, 81, 143, 228));
-    private static readonly Brush VioletTile = Frozen(Color.FromArgb(36, 146, 95, 230));
-    private static readonly Brush TealTile = Frozen(Color.FromArgb(36, 53, 172, 153));
-    private static readonly Brush OrangeTile = Frozen(Color.FromArgb(36, 209, 128, 41));
-    private static readonly Brush RoseTile = Frozen(Color.FromArgb(36, 212, 86, 112));
+    public required string Meta { get; init; }
 
-    private static readonly Brush Blue = Frozen(Color.FromRgb(0x82, 0xB6, 0xFF));
-    private static readonly Brush Violet = Frozen(Color.FromRgb(0xBE, 0x9C, 0xFF));
-    private static readonly Brush Teal = Frozen(Color.FromRgb(0x6A, 0xD7, 0xC6));
-    private static readonly Brush Orange = Frozen(Color.FromRgb(0xEF, 0xB0, 0x6C));
-    private static readonly Brush Rose = Frozen(Color.FromRgb(0xEE, 0x96, 0xAB));
+    public string TimeColumn { get; init; } = string.Empty;
 
-    private static readonly Brush TitleNormal = Frozen(Color.FromRgb(0xDC, 0xE1, 0xEB));
-    private static readonly Brush TitleStrong = Frozen(Color.FromRgb(0xF2, 0xF5, 0xFA));
-    private static readonly Brush MetaNormal = Frozen(Color.FromRgb(0x6E, 0x76, 0x87));
-    private static readonly Brush MetaAccent = Frozen(Color.FromRgb(0x79, 0xAE, 0xF9));
+    public Visibility TimeColumnVisibility =>
+        TimeColumn.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
 
-    private bool _isExpanded;
-    private bool _isRead;
+    public string Link => Occurrence.OnlineMeetingLink ?? string.Empty;
 
-    private StreamEvent()
+    public Visibility JoinVisibility => Link.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+
+    public static StreamMeeting CreateForDay(EasOccurrence occurrence)
     {
+        var start = occurrence.Start.ToLocalTime();
+        var parts = new List<string> { Format.Span(occurrence.End - occurrence.Start) };
+
+        if (occurrence.Attendees.Count > 0)
+        {
+            parts.Add(occurrence.Attendees.Count.ToString());
+        }
+
+        var reply = ReplyLabel(occurrence);
+        if (reply is not null)
+        {
+            parts.Add(reply);
+        }
+
+        return new StreamMeeting
+        {
+            Occurrence = occurrence,
+            Title = occurrence.Subject,
+            Meta = string.Join(" · ", parts),
+            TimeColumn = start.ToString("HH:mm")
+        };
     }
+
+    private static string? ReplyLabel(EasOccurrence occurrence)
+    {
+        return occurrence.ResponseType switch
+        {
+            EasResponseType.Accepted => "вы приняли",
+            EasResponseType.Tentative => "под вопросом",
+            EasResponseType.Declined => "вы отклонили",
+            EasResponseType.NotResponded or EasResponseType.None when occurrence.IsMeeting && !occurrence.IsOrganizer
+                => "вы не ответили",
+            _ => null
+        };
+    }
+
+    public static StreamMeeting Create(EasOccurrence occurrence, DateTimeOffset now, bool showLead)
+    {
+        var start = occurrence.Start.ToLocalTime();
+        var end = occurrence.End.ToLocalTime();
+
+        var parts = new List<string>();
+
+        if (showLead)
+        {
+            parts.Add(occurrence.Start <= now
+                ? $"идёт · осталось {Format.Span(occurrence.End - now)}"
+                : $"через {Format.Span(occurrence.Start - now)}");
+        }
+
+        parts.Add($"{start:HH:mm}–{end:HH:mm}");
+
+        var length = Format.Span(occurrence.End - occurrence.Start);
+        if (!showLead)
+        {
+            parts.Add(length);
+        }
+
+        if (occurrence.Attendees.Count > 0)
+        {
+            parts.Add(occurrence.Attendees.Count.ToString());
+        }
+
+        var reply = ReplyLabel(occurrence);
+
+        if (reply is not null)
+        {
+            parts.Add(reply);
+        }
+
+        return new StreamMeeting
+        {
+            Occurrence = occurrence,
+            Title = occurrence.Subject,
+            Meta = string.Join(" · ", parts)
+        };
+    }
+}
+
+public sealed class MailListRow
+{
+    public required EasMessage Message { get; init; }
+
+    public required string Sender { get; init; }
+
+    public required string SenderNote { get; init; }
+
+    public required string Time { get; init; }
+
+    public required string Subject { get; init; }
+
+    public required string Preview { get; init; }
+
+    public required bool IsUnread { get; init; }
+
+    public required bool IsInvitation { get; init; }
+
+    public Visibility InvitationVisibility =>
+        IsInvitation ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility DotVisibility => IsUnread ? Visibility.Visible : Visibility.Hidden;
+
+    public Brush RowBackground => IsUnread ? Palette.Card : System.Windows.Media.Brushes.Transparent;
+
+    public Visibility PreviewVisibility =>
+        IsUnread && Preview.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    public double SenderSize => IsUnread ? 13 : 12;
+
+    public double SubjectSize => IsUnread ? 14 : 13;
+
+    public FontWeight SenderWeight => IsUnread ? FontWeights.SemiBold : FontWeights.Normal;
+
+    public FontWeight SubjectWeight => IsUnread ? FontWeights.SemiBold : FontWeights.Normal;
+
+    public Brush SenderBrush => IsUnread ? Palette.Ink : Palette.Secondary;
+
+    public Brush SubjectBrush => IsUnread ? Palette.Ink : Palette.Secondary;
+
+    public static MailListRow Create(EasMessage message, DateTimeOffset now, bool unread)
+    {
+        var received = (message.DateReceived ?? now).ToLocalTime();
+        var robot = !message.DisplaySender.Contains(' ');
+
+        return new MailListRow
+        {
+            Message = message,
+            Sender = message.DisplaySender,
+            SenderNote = robot ? " · рассылка" : string.Empty,
+            Time = received.ToString("HH:mm"),
+            Subject = string.IsNullOrWhiteSpace(message.Subject) ? "(без темы)" : message.Subject!,
+            Preview = (message.Preview ?? string.Empty).Replace('\n', ' ').Trim(),
+            IsUnread = unread,
+            IsInvitation = message.IsMeetingRequest
+        };
+    }
+}
+
+public sealed class StreamMail : INotifyPropertyChanged
+{
+    private bool _isRead;
+    private bool _isExpanded;
+
+    public required EasMessage Message { get; init; }
+
+    public required string ServerId { get; init; }
+
+    public required string Line { get; init; }
+
+    public required string Time { get; init; }
+
+    public required string Body { get; init; }
+
+    public required bool Robot { get; init; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public bool IsMail { get; private init; }
+    public bool IsUnread => !_isRead;
 
-    public string ServerId { get; private init; } = string.Empty;
+    public Visibility DotVisibility => _isRead ? Visibility.Hidden : Visibility.Visible;
 
-    public DateTimeOffset Sort { get; private init; }
+    public Brush LineBrush => _isRead ? Palette.Secondary : Palette.Ink;
 
-    public DateTimeOffset Day { get; private init; }
-
-    public EasOccurrence? Occurrence { get; private init; }
-
-    public Geometry Icon { get; private init; } = CalendarGeometry;
-
-    public Brush TileBrush { get; private init; } = BlueTile;
-
-    public Brush AccentBrush { get; private init; } = Blue;
-
-    public string Time { get; private init; } = string.Empty;
-
-    public string Title { get; private init; } = string.Empty;
-
-    public string Subtitle { get; private init; } = string.Empty;
-
-    public string Meta { get; private init; } = string.Empty;
-
-    public Brush MetaBrush { get; private init; } = MetaNormal;
-
-    public FontWeight MetaWeight { get; private init; } = FontWeights.Normal;
-
-    public string Body { get; private init; } = string.Empty;
-
-    public string SearchText { get; private init; } = string.Empty;
-
-    public Visibility NeedsResponseVisibility { get; private init; } = Visibility.Collapsed;
-
-    public string Link { get; private init; } = string.Empty;
-
-    public bool IsUnread => IsMail && !_isRead;
-
-    public Visibility UnreadVisibility => IsUnread ? Visibility.Visible : Visibility.Collapsed;
-
-    public FontWeight TitleWeight => IsUnread ? FontWeights.SemiBold : FontWeights.Normal;
-
-    public Brush TitleBrush => IsUnread ? TitleStrong : TitleNormal;
+    public FontWeight LineWeight => _isRead ? FontWeights.Normal : FontWeights.SemiBold;
 
     public Visibility ExpandedVisibility => _isExpanded ? Visibility.Visible : Visibility.Collapsed;
 
@@ -121,7 +243,6 @@ public sealed class StreamEvent : INotifyPropertyChanged
 
             _isExpanded = value;
             Raise(nameof(ExpandedVisibility));
-            Raise(nameof(IsExpanded));
         }
     }
 
@@ -134,124 +255,47 @@ public sealed class StreamEvent : INotifyPropertyChanged
 
         _isRead = true;
         Raise(nameof(IsUnread));
-        Raise(nameof(UnreadVisibility));
-        Raise(nameof(TitleWeight));
-        Raise(nameof(TitleBrush));
+        Raise(nameof(DotVisibility));
+        Raise(nameof(LineBrush));
+        Raise(nameof(LineWeight));
     }
 
-    public static StreamEvent FromMeeting(EasOccurrence occurrence, DateTimeOffset now)
-    {
-        var start = occurrence.Start.ToLocalTime();
-        var end = occurrence.End.ToLocalTime();
-        var running = occurrence.Start <= now && occurrence.End >= now;
-        var needsResponse = occurrence.NeedsResponse;
-
-        var accent = running ? Teal : needsResponse ? Orange : Blue;
-        var tile = running ? TealTile : needsResponse ? OrangeTile : BlueTile;
-
-        string meta;
-        Brush metaBrush = MetaNormal;
-        var metaWeight = FontWeights.Normal;
-
-        if (running)
-        {
-            meta = $"осталось {Humanize(occurrence.End - now)}";
-            metaBrush = MetaAccent;
-            metaWeight = FontWeights.SemiBold;
-        }
-        else if (occurrence.Start - now < TimeSpan.FromHours(1))
-        {
-            meta = $"через {Humanize(occurrence.Start - now)}";
-            metaBrush = MetaAccent;
-            metaWeight = FontWeights.SemiBold;
-        }
-        else
-        {
-            meta = $"{start:HH:mm}–{end:HH:mm}";
-        }
-
-        return new StreamEvent
-        {
-            IsMail = false,
-            ServerId = occurrence.ServerId,
-            Sort = occurrence.Start,
-            Day = new DateTimeOffset(start.Date, start.Offset),
-            Occurrence = occurrence,
-            Icon = CalendarGeometry,
-            TileBrush = tile,
-            AccentBrush = accent,
-            Time = start.ToString("HH:mm"),
-            Title = occurrence.Subject,
-            Subtitle = MeetingSubtitle(occurrence),
-            Meta = meta,
-            MetaBrush = metaBrush,
-            MetaWeight = metaWeight,
-            Link = occurrence.OnlineMeetingLink ?? string.Empty,
-            NeedsResponseVisibility = needsResponse ? Visibility.Visible : Visibility.Collapsed,
-            SearchText = string.Join(' ',
-                occurrence.Subject,
-                occurrence.Location,
-                occurrence.OrganizerName,
-                occurrence.OrganizerEmail,
-                string.Join(' ', occurrence.Attendees.Select(a => a.DisplayName)))
-        };
-    }
-
-    public static StreamEvent FromMail(EasMessage message, DateTimeOffset now)
+    public static StreamMail Create(EasMessage message, DateTimeOffset now, bool unread)
     {
         var received = (message.DateReceived ?? now).ToLocalTime();
-        var important = message.Importance >= 2;
+        var sender = ShortSender(message.DisplaySender);
 
-        return new StreamEvent
+        return new StreamMail
         {
-            IsMail = true,
+            Message = message,
             ServerId = message.ServerId,
-            Sort = message.DateReceived ?? now,
-            Day = new DateTimeOffset(received.Date, received.Offset),
-            Icon = MailGeometry,
-            TileBrush = important ? RoseTile : VioletTile,
-            AccentBrush = important ? Rose : Violet,
+            Line = $"{sender} — {message.DisplaySubject}",
             Time = received.ToString("HH:mm"),
-            Title = message.DisplaySubject,
-            Subtitle = message.DisplaySender,
-            Meta = Ago(now - received),
+            Robot = !message.DisplaySender.Contains(' '),
             Body = string.IsNullOrWhiteSpace(message.Body)
                 ? message.Preview ?? "(пустое письмо)"
                 : message.Body,
-            _isRead = message.IsRead,
-            SearchText = string.Join(' ',
-                message.DisplaySubject,
-                message.DisplaySender,
-                message.FromAddress,
-                message.Preview)
+            _isRead = !unread
         };
     }
 
-    private static string MeetingSubtitle(EasOccurrence occurrence)
+    private static string ShortSender(string sender)
     {
-        var parts = new List<string>();
+        var parts = sender.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-        var location = occurrence.Location?.Trim();
-        if (!string.IsNullOrEmpty(location))
-        {
-            parts.Add(location.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                ? "онлайн"
-                : location.Length > 30 ? location[..29] + "…" : location);
-        }
-
-        if (occurrence.Attendees.Count > 0)
-        {
-            var count = occurrence.Attendees.Count;
-            parts.Add($"{count} {Plural(count, "участник", "участника", "участников")}");
-        }
-        else if (!string.IsNullOrWhiteSpace(occurrence.OrganizerName))
-        {
-            parts.Add(occurrence.OrganizerName);
-        }
-
-        return parts.Count == 0 ? "Без места" : string.Join(" · ", parts);
+        return parts.Length >= 2 && parts[1].Length > 0
+            ? $"{parts[0]} {char.ToUpperInvariant(parts[1][0])}."
+            : sender;
     }
 
+    private void Raise(string property)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
+    }
+}
+
+public static class Format
+{
     public static string Plural(int count, string one, string few, string many)
     {
         var hundred = count % 100;
@@ -269,7 +313,26 @@ public sealed class StreamEvent : INotifyPropertyChanged
         };
     }
 
-    public static string Humanize(TimeSpan span)
+    public static int WholeDays(TimeSpan span)
+    {
+        return Math.Max(1, (int)Math.Floor(span.TotalDays));
+    }
+
+    public static string Gap(TimeSpan span)
+    {
+        if (span.TotalDays >= 1)
+        {
+            var days = (int)span.TotalDays;
+            var hours = span.Hours;
+
+            var text = $"{days} {Plural(days, "день", "дня", "дней")}";
+            return hours == 0 ? text : $"{text} {hours} {Plural(hours, "час", "часа", "часов")}";
+        }
+
+        return Span(span);
+    }
+
+    public static string Span(TimeSpan span)
     {
         if (span < TimeSpan.Zero)
         {
@@ -288,34 +351,6 @@ public sealed class StreamEvent : INotifyPropertyChanged
             return minutes == 0 ? $"{hours} ч" : $"{hours} ч {minutes} мин";
         }
 
-        var days = (int)span.TotalDays;
-        return $"{days} д";
-    }
-
-    private static string Ago(TimeSpan span)
-    {
-        if (span < TimeSpan.FromMinutes(1))
-        {
-            return "только что";
-        }
-
-        if (span < TimeSpan.FromDays(1))
-        {
-            return $"{Humanize(span)} назад";
-        }
-
-        return span.TotalDays < 2 ? "вчера" : $"{(int)span.TotalDays} д назад";
-    }
-
-    private static Brush Frozen(Color color)
-    {
-        var brush = new SolidColorBrush(color);
-        brush.Freeze();
-        return brush;
-    }
-
-    private void Raise(string property)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
+        return $"{(int)span.TotalDays} д";
     }
 }
