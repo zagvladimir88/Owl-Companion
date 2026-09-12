@@ -16,10 +16,13 @@ public static class Palette
     public static readonly Brush Tertiary = Frozen(0x6F, 0x6A, 0x67);
     public static readonly Brush Faint = Frozen(0x8A, 0x84, 0x81);
     public static readonly Brush Line = Frozen(0xCF, 0xCA, 0xC6);
+    public static readonly Brush Divider = Frozen(0xE0, 0xDC, 0xD9);
     public static readonly Brush Surface = Frozen(0xF3, 0xF2, 0xF2);
     public static readonly Brush Card = Frozen(0xFF, 0xFF, 0xFF);
     public static readonly Brush Accent = Frozen(0xEC, 0x30, 0x13);
     public static readonly Brush AccentDeep = Frozen(0xB8, 0x1F, 0x05);
+    public static readonly Brush ErrorTint = Frozen(0xFD, 0xF1, 0xEE);
+    public static readonly Brush ErrorLine = Frozen(0xE9, 0xB3, 0xA6);
 
     private static Brush Frozen(byte r, byte g, byte b)
     {
