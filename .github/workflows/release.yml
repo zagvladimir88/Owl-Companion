@@ -1,0 +1,48 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  package:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Version from tag
+        id: version
+        shell: pwsh
+        run: echo "value=$($env:GITHUB_REF_NAME -replace '^v','')" >> $env:GITHUB_OUTPUT
+
+      - name: Install vpk
+        run: dotnet tool install -g vpk
+
+      - name: Publish
+        run: >
+          dotnet publish src/OwaWidget.App -c Release -r win-x64 --self-contained true
+          -p:Version=${{ steps.version.outputs.value }} -o publish
+
+      - name: Previous release for delta
+        continue-on-error: true
+        run: >
+          vpk download github --repoUrl https://github.com/${{ github.repository }}
+          --token ${{ github.token }} -o releases
+
+      - name: Pack
+        run: >
+          vpk pack -u Owl -v ${{ steps.version.outputs.value }} -p publish -e OwaWidget.exe
+          -o releases --packTitle Owl --packAuthors "Vladimir Zagorny"
+          --shortcuts StartMenuRoot -i src/OwaWidget.App/Assets/owawidget.ico
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: releases/*

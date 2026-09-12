@@ -22,6 +22,7 @@ public partial class App : Application
     private ReminderScheduler _reminders = null!;
     private TrayIconService _tray = null!;
 
+    private UpdateService? _updates;
     private EasSession? _session;
     private CancellationTokenSource? _cancellation;
     private FlyoutWindow? _flyout;
@@ -30,6 +31,7 @@ public partial class App : Application
     private string _trayStatus = "Запуск…";
     private bool _trayOffline;
     private System.Windows.Threading.DispatcherTimer? _trayTicker;
+    private System.Windows.Threading.DispatcherTimer? _updateTicker;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -71,7 +73,7 @@ public partial class App : Application
         _reminders.ReminderDue += OnReminderDue;
         _reminders.Start();
 
-        _tray = new TrayIconService();
+        _tray = new TrayIconService(UpdateService.DisplayVersion);
         _tray.PanelRequested += TogglePanel;
         _tray.WebMailRequested += OpenWebMail;
         _tray.RefreshRequested += StartSession;
@@ -107,13 +109,48 @@ public partial class App : Application
         _trayTicker.Tick += (_, _) => RefreshTray();
         _trayTicker.Start();
 
-        Log.Info($"started, exe={Environment.ProcessPath}");
+        Log.Info($"started, exe={Environment.ProcessPath}, version={UpdateService.DisplayVersion}");
 
+        StartUpdates();
         StartSession();
+    }
+
+    private void StartUpdates()
+    {
+        _updates = new UpdateService();
+        _updates.UpdateReady += OnUpdateReady;
+
+        _tray.UpdateRestartRequested += () => _updates?.ApplyAndRestart();
+
+        _updateTicker = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromHours(6)
+        };
+
+        _updateTicker.Tick += (_, _) => _ = _updates.CheckAsync();
+        _updateTicker.Start();
+
+        _ = _updates.CheckAsync();
+    }
+
+    private void OnUpdateReady(string version)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            _tray.ShowUpdateReady(version);
+
+            if (!_paused)
+            {
+                _notifications.ShowError(
+                    $"Owl {version} готов к установке",
+                    "Обновление скачано. Оно применится при следующем запуске или сразу — «Перезапустить и обновить» в меню значка.");
+            }
+        });
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _updates?.ApplyOnExit();
         _cancellation?.Cancel();
         _session?.Dispose();
         _reminders?.Dispose();

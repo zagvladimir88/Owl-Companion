@@ -30,3 +30,6 @@ packages/
 *.tmp
 Thumbs.db
 desktop.ini
+
+# Пакеты Velopack
+releases/

@@ -9,7 +9,9 @@ public static class ShortcutInstaller
 {
     public const string AppUserModelId = "OwaWidget.CorporateMail";
 
-    private const string ShortcutName = "OWA Widget.lnk";
+    private const string ShortcutName = "Owl.lnk";
+
+    private const string LegacyShortcutName = "OWA Widget.lnk";
 
     public static void SetProcessIdentity()
     {
@@ -33,9 +35,12 @@ public static class ShortcutInstaller
                 return;
             }
 
-            var path = Path.Combine(
+            var programs = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "Microsoft", "Windows", "Start Menu", "Programs", ShortcutName);
+                "Microsoft", "Windows", "Start Menu", "Programs");
+
+            var path = Path.Combine(programs, ShortcutName);
+            RemoveLegacyShortcuts(programs);
 
             var activator = FindActivatorClsid(executable);
 
@@ -51,6 +56,29 @@ public static class ShortcutInstaller
         catch (Exception exception)
         {
             Log.Error("shortcut creation failed", exception);
+        }
+    }
+
+    private static void RemoveLegacyShortcuts(string programs)
+    {
+        foreach (var folder in new[] { programs, Path.Combine(programs, "Startup") })
+        {
+            var legacy = Path.Combine(folder, LegacyShortcutName);
+
+            if (!File.Exists(legacy))
+            {
+                continue;
+            }
+
+            try
+            {
+                File.Delete(legacy);
+                Log.Info($"legacy shortcut removed: {legacy}");
+            }
+            catch (Exception exception)
+            {
+                Log.Error("legacy shortcut removal failed", exception);
+            }
         }
     }
 
