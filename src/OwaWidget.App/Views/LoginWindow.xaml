@@ -292,7 +292,12 @@
             <StackPanel x:Name="FormBlock" Margin="0,16,0,0">
                 <TextBlock Text="Сервер" Style="{StaticResource FieldLabel}" />
                 <Border x:Name="ServerField" Style="{StaticResource FieldBox}">
-                    <TextBox x:Name="ServerBox" Style="{StaticResource BareInput}" />
+                    <Grid>
+                        <TextBlock x:Name="ServerHint" Text="https://owa.example.com" FontSize="13"
+                                   Foreground="{StaticResource Faint}" VerticalAlignment="Center"
+                                   IsHitTestVisible="False" />
+                        <TextBox x:Name="ServerBox" Style="{StaticResource BareInput}" />
+                    </Grid>
                 </Border>
 
                 <TextBlock Text="Логин" Style="{StaticResource FieldLabel}" Margin="0,14,0,6" />

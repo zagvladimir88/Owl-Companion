@@ -7,7 +7,7 @@ namespace OwaWidget.App.Services;
 
 public sealed class AppSettings
 {
-    public string Server { get; set; } = "https://owa.alfabank.ru";
+    public string Server { get; set; } = string.Empty;
 
     public string User { get; set; } = string.Empty;
 
