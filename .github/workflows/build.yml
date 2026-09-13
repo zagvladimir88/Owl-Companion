@@ -8,6 +8,10 @@ on:
     branches:
       - master
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: windows-latest
@@ -19,5 +23,24 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
       - name: Build
         run: dotnet build OwaWidget.sln -c Release
+
+      - name: Publish
+        run: >
+          dotnet publish src/OwaWidget.App -c Release -r win-x64 --self-contained true
+          -o publish
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: owl-${{ github.event.pull_request.number || github.sha }}
+          path: publish
+          retention-days: 14
+          if-no-files-found: error
