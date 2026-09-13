@@ -38,7 +38,7 @@ jobs:
           dotnet publish src/OwaWidget.App -c Release -r win-x64 --self-contained true
           -o publish
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: owl-${{ github.event.pull_request.number || github.sha }}
           path: publish
