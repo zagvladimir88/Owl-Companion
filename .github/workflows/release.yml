@@ -43,7 +43,7 @@ jobs:
           -o releases --packTitle Owl --packAuthors "Vladimir Zagorny"
           --shortcuts StartMenuRoot -i src/OwaWidget.App/Assets/owawidget.ico
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: releases/*
           generate_release_notes: true
