@@ -58,6 +58,7 @@ public partial class LoginWindow : FluentWindow
             PaintField(PasswordField, focused: false, error: true);
         }
 
+        ServerBox.TextChanged += (_, _) => UpdateHints();
         UserBox.TextChanged += (_, _) => UpdateHints();
         PasswordBox.PasswordChanged += (_, _) => UpdateHints();
         PasswordPlain.TextChanged += (_, _) => UpdateHints();
@@ -109,6 +110,8 @@ public partial class LoginWindow : FluentWindow
 
     private void UpdateHints()
     {
+        ServerHint.Visibility = ServerBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+
         UserHint.Visibility = UserBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         var empty = _revealed ? PasswordPlain.Text.Length == 0 : PasswordBox.Password.Length == 0;

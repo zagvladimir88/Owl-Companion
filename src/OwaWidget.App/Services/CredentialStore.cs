@@ -54,6 +54,11 @@ public static class CredentialStore
 
     public static (string User, string Password)? TryLoad(string server)
     {
+        if (!Uri.TryCreate(server, UriKind.Absolute, out _))
+        {
+            return null;
+        }
+
         if (!CredRead(TargetFor(server), CredTypeGeneric, 0, out var handle))
         {
             return null;

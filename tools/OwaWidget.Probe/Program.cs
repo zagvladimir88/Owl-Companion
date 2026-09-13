@@ -8,8 +8,10 @@ using OwaWidget.Eas.Recurrence;
 
 Console.OutputEncoding = Encoding.UTF8;
 
-var server = Environment.GetEnvironmentVariable("OWA_SERVER") ?? "https://owa.alfabank.ru";
-var user = args.Length > 0 ? args[0] : Prompt("Логин (moscow\\u_m23vw): ");
+var server = Environment.GetEnvironmentVariable("OWA_SERVER") is { Length: > 0 } configured
+    ? configured
+    : Prompt("Сервер (https://owa.example.com): ");
+var user = args.Length > 0 ? args[0] : Prompt("Логин (домен\\имя): ");
 var password = ReadPassword("Пароль: ");
 
 var deviceId = LoadOrCreateDeviceId();
