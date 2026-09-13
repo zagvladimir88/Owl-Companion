@@ -6,7 +6,7 @@ namespace OwaWidget.App.Services;
 
 public sealed class UpdateService
 {
-    public const string Repository = "https://github.com/zagvladimir88/Owl-ompanion";
+    public const string Repository = "https://github.com/zagvladimir88/Owl-Companion";
 
     private readonly UpdateManager _manager;
     private UpdateInfo? _pending;
