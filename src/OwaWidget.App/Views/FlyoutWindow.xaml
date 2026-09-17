@@ -633,56 +633,9 @@
                 </StackPanel>
             </Border>
 
-            <Border Grid.Row="2" x:Name="HeroCard" Margin="22,0,22,0" Padding="18,13,18,14" CornerRadius="10"
-                    Background="{DynamicResource Card}" BorderThickness="0,2,0,0"
-                    BorderBrush="{DynamicResource Accent}" Visibility="Collapsed">
-                <StackPanel>
-                    <Grid>
-                        <TextBlock x:Name="HeroLabel" FontSize="11" FontWeight="Bold"
-                                   Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center" />
-                        <TextBlock x:Name="HeroMeta" FontSize="12" Foreground="{DynamicResource Secondary}"
-                                   HorizontalAlignment="Right" VerticalAlignment="Center" />
-                    </Grid>
-                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                        <TextBlock x:Name="HeroCountdown" FontSize="34" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource Ink}" />
-                        <TextBlock x:Name="HeroUnit" FontSize="20" Foreground="{DynamicResource Secondary}"
-                                   VerticalAlignment="Bottom" Margin="6,0,0,3" />
-                    </StackPanel>
-                    <TextBlock x:Name="HeroSubject" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource Ink}"
-                               TextWrapping="Wrap" LineHeight="21" Margin="0,8,0,0" MaxHeight="46" />
-                    <Grid x:Name="HeroButtons" Margin="0,12,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition x:Name="HeroJoinColumn" Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" x:Name="HeroJoin" Height="40" CornerRadius="8"
-                                Background="{DynamicResource Accent}" Cursor="Hand" MouseLeftButtonUp="OnJoinHero">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0">
-                                <Path Data="{StaticResource VideoIcon}" Stroke="White" StrokeThickness="1.6"
-                                      StrokeLineJoin="Round" Stretch="Uniform" Width="18" Height="18" />
-                                <TextBlock Text="Подключиться" FontSize="14" FontWeight="SemiBold" Foreground="White"
-                                           Margin="9,0,0,0" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Column="1" Style="{StaticResource IconBox}" Width="40" Height="40"
-                                Margin="8,0,0,0" MouseLeftButtonUp="OnOpenHeroDetail" ToolTip="Участники">
-                            <Path Data="{StaticResource PeopleIcon}" Stroke="{DynamicResource Ink}" StrokeThickness="1.6"
-                                  Stretch="Uniform" Width="18" Height="18" />
-                        </Border>
-                        <Border Grid.Column="2" Style="{StaticResource IconBox}" Width="40" Height="40"
-                                Margin="8,0,0,0" MouseLeftButtonUp="OnOpenHeroDetail" ToolTip="Открыть встречу">
-                            <Path Data="{StaticResource ChevronRight}" Stroke="{DynamicResource Ink}" StrokeThickness="1.6"
-                                  StrokeLineJoin="Round" Stretch="Uniform" Width="16" Height="16" />
-                        </Border>
-                    </Grid>
-                </StackPanel>
-            </Border>
-
-            <Border Grid.Row="2" x:Name="CalmCard" Margin="22,0,22,0" Padding="18,15,18,16" CornerRadius="10"
+            <Border Grid.Row="2" x:Name="CalmCard" Margin="22,0,22,10" Padding="18,15,18,16" CornerRadius="10"
                     Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
-                    Visibility="Collapsed">
+                    Effect="{DynamicResource CardShadow}" Visibility="Collapsed">
                 <StackPanel>
                     <Grid>
                         <TextBlock x:Name="CalmLabel" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Ink}"
@@ -709,7 +662,7 @@
                 </StackPanel>
             </Border>
 
-            <StackPanel Grid.Row="2" x:Name="SearchTools" Margin="22,0,22,0" Visibility="Collapsed">
+            <StackPanel Grid.Row="2" x:Name="SearchTools" Margin="22,0,22,10" Visibility="Collapsed">
                 <TextBlock x:Name="FiltersLabel" FontSize="11" FontWeight="Bold"
                            Foreground="{DynamicResource Secondary}" Margin="0,0,0,7" />
                 <WrapPanel>
@@ -746,7 +699,8 @@
             </StackPanel>
 
             <Grid Grid.Row="3" Margin="22,0,12,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
+                <ScrollViewer x:Name="StreamScroll" VerticalScrollBarVisibility="Auto"
+                              PanningMode="VerticalOnly">
                     <ItemsControl x:Name="StreamList" Margin="0,0,10,12">
                         <ItemsControl.ItemTemplateSelector>
                             <views:StreamTemplateSelector
@@ -756,6 +710,54 @@
                         </ItemsControl.ItemTemplateSelector>
                     </ItemsControl>
                 </ScrollViewer>
+
+                <Border x:Name="HeroCard" Margin="0,0,10,0" Padding="18,13,18,14" CornerRadius="10"
+                        VerticalAlignment="Top" Background="{DynamicResource Card}" BorderThickness="0,2,0,0"
+                        BorderBrush="{DynamicResource Accent}" Effect="{DynamicResource CardShadow}"
+                        Visibility="Collapsed">
+                    <StackPanel>
+                        <Grid>
+                            <TextBlock x:Name="HeroLabel" FontSize="11" FontWeight="Bold"
+                                       Foreground="{DynamicResource AccentDeep}" VerticalAlignment="Center" />
+                            <TextBlock x:Name="HeroMeta" FontSize="12" Foreground="{DynamicResource Secondary}"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <TextBlock x:Name="HeroCountdown" FontSize="34" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource Ink}" />
+                            <TextBlock x:Name="HeroUnit" FontSize="20" Foreground="{DynamicResource Secondary}"
+                                       VerticalAlignment="Bottom" Margin="6,0,0,3" />
+                        </StackPanel>
+                        <TextBlock x:Name="HeroSubject" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource Ink}"
+                                   TextWrapping="Wrap" LineHeight="21" Margin="0,8,0,0" MaxHeight="46" />
+                        <Grid x:Name="HeroButtons" Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition x:Name="HeroJoinColumn" Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" x:Name="HeroJoin" Height="40" CornerRadius="8"
+                                    Background="{DynamicResource Accent}" Cursor="Hand" MouseLeftButtonUp="OnJoinHero">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0">
+                                    <Path Data="{StaticResource VideoIcon}" Stroke="White" StrokeThickness="1.6"
+                                          StrokeLineJoin="Round" Stretch="Uniform" Width="18" Height="18" />
+                                    <TextBlock Text="Подключиться" FontSize="14" FontWeight="SemiBold" Foreground="White"
+                                               Margin="9,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Style="{StaticResource IconBox}" Width="40" Height="40"
+                                    Margin="8,0,0,0" MouseLeftButtonUp="OnOpenHeroDetail" ToolTip="Участники">
+                                <Path Data="{StaticResource PeopleIcon}" Stroke="{DynamicResource Ink}" StrokeThickness="1.6"
+                                      Stretch="Uniform" Width="18" Height="18" />
+                            </Border>
+                            <Border Grid.Column="2" Style="{StaticResource IconBox}" Width="40" Height="40"
+                                    Margin="8,0,0,0" MouseLeftButtonUp="OnOpenHeroDetail" ToolTip="Открыть встречу">
+                                <Path Data="{StaticResource ChevronRight}" Stroke="{DynamicResource Ink}" StrokeThickness="1.6"
+                                      StrokeLineJoin="Round" Stretch="Uniform" Width="16" Height="16" />
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Border>
 
                 <StackPanel x:Name="EmptyBlock" VerticalAlignment="Top" Visibility="Collapsed" Margin="0,2,10,0">
                     <Border Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}"

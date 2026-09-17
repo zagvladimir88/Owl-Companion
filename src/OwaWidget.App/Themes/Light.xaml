@@ -19,4 +19,7 @@
     <SolidColorBrush x:Key="FooterBar" Color="#E9E6E3" />
     <SolidColorBrush x:Key="IconHover" Color="#F3F2F2" />
 
+    <DropShadowEffect x:Key="CardShadow" Color="#000000" BlurRadius="14" ShadowDepth="3"
+                      Direction="270" Opacity="0.13" RenderingBias="Quality" />
+
 </ResourceDictionary>
