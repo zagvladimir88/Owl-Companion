@@ -3,6 +3,7 @@ using OwaWidget.Eas.Commands;
 using OwaWidget.Eas.Models;
 using OwaWidget.Eas.Parsers;
 using OwaWidget.Eas.Recurrence;
+using OwaWidget.Eas.Wbxml;
 
 namespace OwaWidget.App.Services;
 
@@ -199,13 +200,13 @@ public sealed class EasSession : IDisposable
             _messages.Clear();
             if (cachedMail is not null)
             {
-                _messages.AddRange(cachedMail);
+                _messages.AddRange(cachedMail.Where(m => !m.IsEmpty));
             }
 
             _appointments.Clear();
             if (cachedAppointments is not null)
             {
-                _appointments.AddRange(cachedAppointments);
+                _appointments.AddRange(Deduplicate(cachedAppointments));
             }
 
             messages = _messages.Count;
@@ -591,8 +592,15 @@ public sealed class EasSession : IDisposable
                         var updated = EmailParser.Parse(change.ServerId, _state.InboxId!, change.ApplicationData);
                         lock (_gate)
                         {
-                            _messages.RemoveAll(m => m.ServerId == updated.ServerId);
-                            _messages.Add(updated);
+                            var existing = _messages.FindIndex(m => m.ServerId == updated.ServerId);
+                            if (existing >= 0)
+                            {
+                                _messages[existing] = Merge(_messages[existing], updated, change.ApplicationData);
+                            }
+                            else if (!updated.IsEmpty)
+                            {
+                                _messages.Add(updated);
+                            }
                         }
 
                         break;
@@ -702,7 +710,14 @@ public sealed class EasSession : IDisposable
                     if (change.ApplicationData is not null &&
                         change.Type is SyncChangeType.Add or SyncChangeType.Change)
                     {
-                        _appointments.Add(CalendarParser.Parse(change.ServerId, change.ApplicationData));
+                        var appointment = CalendarParser.Parse(change.ServerId, change.ApplicationData);
+
+                        if (appointment.Uid is { Length: > 0 } uid)
+                        {
+                            _appointments.RemoveAll(a => a.Uid == uid);
+                        }
+
+                        _appointments.Add(appointment);
                     }
                 }
             }
@@ -713,6 +728,35 @@ public sealed class EasSession : IDisposable
             PersistCalendarCache();
             CalendarChanged?.Invoke(UpcomingOccurrences());
         }
+    }
+
+    private static EasMessage Merge(EasMessage existing, EasMessage delta, WbxmlElement data)
+    {
+        return existing with
+        {
+            From = delta.From ?? existing.From,
+            FromName = delta.FromName ?? existing.FromName,
+            FromAddress = delta.FromAddress ?? existing.FromAddress,
+            Subject = delta.Subject ?? existing.Subject,
+            DateReceived = delta.DateReceived ?? existing.DateReceived,
+            IsRead = data.ChildText("Read") is null ? existing.IsRead : delta.IsRead,
+            Preview = delta.Preview ?? existing.Preview,
+            Body = delta.Body ?? existing.Body,
+            ThreadTopic = delta.ThreadTopic ?? existing.ThreadTopic,
+            ConversationId = delta.ConversationId ?? existing.ConversationId,
+            MessageClass = delta.MessageClass ?? existing.MessageClass,
+            Importance = data.ChildInt("Importance") ?? existing.Importance
+        };
+    }
+
+    private static List<EasAppointment> Deduplicate(IEnumerable<EasAppointment> appointments)
+    {
+        return appointments
+            .GroupBy(a => a.Uid is { Length: > 0 } uid ? uid : a.ServerId)
+            .Select(group => group
+                .OrderByDescending(a => a.DtStamp ?? DateTimeOffset.MinValue)
+                .First())
+            .ToList();
     }
 
     private void PersistMailCache()

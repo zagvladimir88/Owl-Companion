@@ -20,11 +20,15 @@ public sealed class TrayIconService : IDisposable
     private readonly MenuItem _pauseItem;
     private readonly MenuItem _startupItem;
     private readonly MenuItem _updateItem;
+    private readonly MenuItem _themeLightItem;
+    private readonly MenuItem _themeDarkItem;
+    private readonly MenuItem _themeSystemItem;
     private readonly Icon _baseIcon;
 
     private Icon? _currentIcon;
     private IntPtr _currentHandle;
     private string? _renderKey;
+    private TrayPresentation? _lastPresentation;
 
     public TrayIconService(string version)
     {
@@ -44,6 +48,15 @@ public sealed class TrayIconService : IDisposable
         _startupItem = new MenuItem { Header = "Запускать при входе", IsCheckable = true };
         _startupItem.Click += (_, _) => StartWithWindowsToggled?.Invoke(_startupItem.IsChecked);
 
+        _themeLightItem = ThemeItem("Светлая", ThemeChoice.Light);
+        _themeDarkItem = ThemeItem("Тёмная", ThemeChoice.Dark);
+        _themeSystemItem = ThemeItem("Как в системе", ThemeChoice.System);
+
+        var themeMenu = new MenuItem { Header = "Тема" };
+        themeMenu.Items.Add(_themeLightItem);
+        themeMenu.Items.Add(_themeDarkItem);
+        themeMenu.Items.Add(_themeSystemItem);
+
         _menu = new ContextMenu();
         _menu.Items.Add(Item("Показать панель", () => PanelRequested?.Invoke()));
         _menu.Items.Add(Item("Открыть почту в браузере", () => WebMailRequested?.Invoke()));
@@ -53,6 +66,7 @@ public sealed class TrayIconService : IDisposable
         _menu.Items.Add(_pauseItem);
         _menu.Items.Add(new Separator());
         _menu.Items.Add(_startupItem);
+        _menu.Items.Add(themeMenu);
         _menu.Items.Add(Item("Сбросить кэш", () => ResetCacheRequested?.Invoke()));
         _menu.Items.Add(new Separator());
         _menu.Items.Add(Item("Учётные данные…", () => SettingsRequested?.Invoke()));
@@ -101,6 +115,8 @@ public sealed class TrayIconService : IDisposable
 
     public event Action? UpdateRestartRequested;
 
+    public event Action<ThemeChoice>? ThemeChangeRequested;
+
     public void ShowUpdateReady(string version)
     {
         _updateItem.Header = $"Перезапустить и обновить до {version}";
@@ -113,6 +129,27 @@ public sealed class TrayIconService : IDisposable
         set => _startupItem.IsChecked = value;
     }
 
+    public ThemeChoice Theme
+    {
+        set
+        {
+            _themeLightItem.IsChecked = value == ThemeChoice.Light;
+            _themeDarkItem.IsChecked = value == ThemeChoice.Dark;
+            _themeSystemItem.IsChecked = value == ThemeChoice.System;
+        }
+    }
+
+    public void Repaint()
+    {
+        if (_lastPresentation is null)
+        {
+            return;
+        }
+
+        _renderKey = null;
+        Update(_lastPresentation);
+    }
+
     public void Update(int unreadCount, string status)
     {
         Update(new TrayPresentation(TrayState.Free, 0, $"Owl\n{status}"));
@@ -120,7 +157,9 @@ public sealed class TrayIconService : IDisposable
 
     public void Update(TrayPresentation presentation)
     {
-        var key = $"{presentation.State}|{Math.Round(presentation.Fill * 12)}";
+        _lastPresentation = presentation;
+
+        var key = $"{presentation.State}|{Math.Round(presentation.Fill * 12)}|{ThemeService.IsTaskbarDark}";
 
         if (key != _renderKey)
         {
@@ -178,12 +217,19 @@ public sealed class TrayIconService : IDisposable
         return item;
     }
 
+    private MenuItem ThemeItem(string header, ThemeChoice mode)
+    {
+        var item = new MenuItem { Header = header, IsCheckable = true };
+        item.Click += (_, _) => ThemeChangeRequested?.Invoke(mode);
+        return item;
+    }
+
 
     private Icon BuildIcon(TrayPresentation presentation)
     {
         var size = Math.Max(16, System.Windows.Forms.SystemInformation.SmallIconSize.Width);
 
-        using var bitmap = TrayIconPainter.Paint(presentation, size);
+        using var bitmap = TrayIconPainter.Paint(presentation, size, ThemeService.IsTaskbarDark);
 
         _currentHandle = bitmap.GetHicon();
         return Icon.FromHandle(_currentHandle);

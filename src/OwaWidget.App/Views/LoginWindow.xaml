@@ -9,23 +9,12 @@
                  ExtendsContentIntoTitleBar="True"
                  WindowBackdropType="None"
                  ResizeMode="NoResize"
-                 Background="#F3F2F2"
-                 Foreground="#201E1D"
+                 Background="{DynamicResource Surface}"
+                 Foreground="{DynamicResource Ink}"
                  FontFamily="Segoe UI Variable Display, Segoe UI Variable Text, Segoe UI"
                  UseLayoutRounding="True">
 
     <Window.Resources>
-        <SolidColorBrush x:Key="Ink" Color="#201E1D" />
-        <SolidColorBrush x:Key="Secondary" Color="#57524F" />
-        <SolidColorBrush x:Key="Tertiary" Color="#6F6A67" />
-        <SolidColorBrush x:Key="Faint" Color="#8A8481" />
-        <SolidColorBrush x:Key="Line" Color="#CFCAC6" />
-        <SolidColorBrush x:Key="Divider" Color="#E0DCD9" />
-        <SolidColorBrush x:Key="Surface" Color="#F3F2F2" />
-        <SolidColorBrush x:Key="Card" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="Accent" Color="#EC3013" />
-        <SolidColorBrush x:Key="AccentDeep" Color="#B81F05" />
-
         <Geometry x:Key="CloseIcon">M4,4 L14,14 M14,4 L4,14</Geometry>
         <Geometry x:Key="LockIcon">M5.6,8 L5.6,5.6 A3.4,3.4 0 0 1 12.4,5.6 L12.4,8 M3.6,8 L14.4,8 L14.4,15.4 L3.6,15.4 Z</Geometry>
         <Geometry x:Key="EyeIcon">M1.6,9 C4.4,4.8 13.6,4.8 16.4,9 C13.6,13.2 4.4,13.2 1.6,9 Z M9,6.9 A2.1,2.1 0 1 1 8.99,6.9 Z</Geometry>
@@ -43,9 +32,9 @@
             <Setter Property="MinHeight" Value="0" />
             <Setter Property="MinWidth" Value="0" />
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="Foreground" Value="{StaticResource Ink}" />
-            <Setter Property="CaretBrush" Value="{StaticResource Accent}" />
-            <Setter Property="SelectionBrush" Value="{StaticResource Accent}" />
+            <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource Accent}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource Accent}" />
             <Setter Property="SelectionOpacity" Value="0.22" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -68,9 +57,9 @@
             <Setter Property="MinHeight" Value="0" />
             <Setter Property="MinWidth" Value="0" />
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="Foreground" Value="{StaticResource Ink}" />
-            <Setter Property="CaretBrush" Value="{StaticResource Accent}" />
-            <Setter Property="SelectionBrush" Value="{StaticResource Accent}" />
+            <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource Accent}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource Accent}" />
             <Setter Property="SelectionOpacity" Value="0.22" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -88,15 +77,15 @@
         <Style x:Key="FieldLabel" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{StaticResource Secondary}" />
+            <Setter Property="Foreground" Value="{DynamicResource Secondary}" />
             <Setter Property="Margin" Value="0,0,0,6" />
         </Style>
 
         <Style x:Key="FieldBox" TargetType="Border">
             <Setter Property="Height" Value="32" />
             <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Background" Value="{StaticResource Card}" />
-            <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+            <Setter Property="Background" Value="{DynamicResource Card}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="11,0" />
             <Setter Property="SnapsToDevicePixels" Value="True" />
@@ -112,13 +101,15 @@
                     <ControlTemplate TargetType="Button">
                         <Grid>
                             <Border x:Name="Focus" CornerRadius="10" BorderThickness="2" Margin="-4"
-                                    BorderBrush="{StaticResource Accent}" Opacity="0" />
-                            <Border x:Name="Shell" CornerRadius="8" SnapsToDevicePixels="True">
-                                <Border.Background>
-                                    <SolidColorBrush Color="#EC3013" />
-                                </Border.Background>
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                  Margin="16,0" />
+                                    BorderBrush="{DynamicResource Accent}" Opacity="0" />
+                            <Border x:Name="Shell" CornerRadius="8" SnapsToDevicePixels="True"
+                                    Background="{DynamicResource Accent}">
+                                <Grid>
+                                    <Border x:Name="Hot" CornerRadius="8" Opacity="0"
+                                            Background="{DynamicResource AccentHover}" />
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Margin="16,0" />
+                                </Grid>
                             </Border>
                         </Grid>
                         <ControlTemplate.Triggers>
@@ -126,18 +117,18 @@
                                 <Trigger.EnterActions>
                                     <BeginStoryboard>
                                         <Storyboard>
-                                            <ColorAnimation Storyboard.TargetName="Shell"
-                                                            Storyboard.TargetProperty="Background.Color"
-                                                            To="#B81F05" Duration="0:0:0.12" />
+                                            <DoubleAnimation Storyboard.TargetName="Hot"
+                                                             Storyboard.TargetProperty="Opacity" To="1"
+                                                             Duration="0:0:0.12" />
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </Trigger.EnterActions>
                                 <Trigger.ExitActions>
                                     <BeginStoryboard>
                                         <Storyboard>
-                                            <ColorAnimation Storyboard.TargetName="Shell"
-                                                            Storyboard.TargetProperty="Background.Color"
-                                                            To="#EC3013" Duration="0:0:0.12" />
+                                            <DoubleAnimation Storyboard.TargetName="Hot"
+                                                             Storyboard.TargetProperty="Opacity" To="0"
+                                                             Duration="0:0:0.12" />
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </Trigger.ExitActions>
@@ -165,14 +156,15 @@
                     <ControlTemplate TargetType="Button">
                         <Grid>
                             <Border x:Name="Focus" CornerRadius="10" BorderThickness="2" Margin="-4"
-                                    BorderBrush="{StaticResource Accent}" Opacity="0" />
+                                    BorderBrush="{DynamicResource Accent}" Opacity="0" />
                             <Border x:Name="Shell" CornerRadius="8" BorderThickness="1" SnapsToDevicePixels="True"
-                                    Background="{StaticResource Card}">
-                                <Border.BorderBrush>
-                                    <SolidColorBrush Color="#CFCAC6" />
-                                </Border.BorderBrush>
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                  Margin="16,0" />
+                                    Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}">
+                                <Grid>
+                                    <Border x:Name="Ring" CornerRadius="8" BorderThickness="1" Margin="-1"
+                                            BorderBrush="{DynamicResource HoverStroke}" Opacity="0" />
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Margin="16,0" />
+                                </Grid>
                             </Border>
                         </Grid>
                         <ControlTemplate.Triggers>
@@ -180,18 +172,18 @@
                                 <Trigger.EnterActions>
                                     <BeginStoryboard>
                                         <Storyboard>
-                                            <ColorAnimation Storyboard.TargetName="Shell"
-                                                            Storyboard.TargetProperty="BorderBrush.Color"
-                                                            To="#E9B3A6" Duration="0:0:0.12" />
+                                            <DoubleAnimation Storyboard.TargetName="Ring"
+                                                             Storyboard.TargetProperty="Opacity" To="1"
+                                                             Duration="0:0:0.12" />
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </Trigger.EnterActions>
                                 <Trigger.ExitActions>
                                     <BeginStoryboard>
                                         <Storyboard>
-                                            <ColorAnimation Storyboard.TargetName="Shell"
-                                                            Storyboard.TargetProperty="BorderBrush.Color"
-                                                            To="#CFCAC6" Duration="0:0:0.12" />
+                                            <DoubleAnimation Storyboard.TargetName="Ring"
+                                                             Storyboard.TargetProperty="Opacity" To="0"
+                                                             Duration="0:0:0.12" />
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </Trigger.ExitActions>
@@ -217,13 +209,13 @@
             <Setter Property="Cursor" Value="Hand" />
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#FDF1EE" />
+                    <Setter Property="Background" Value="{DynamicResource HoverFill}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
     </Window.Resources>
 
-    <Grid Background="{StaticResource Surface}">
+    <Grid Background="{DynamicResource Surface}">
         <Grid.RowDefinitions>
             <RowDefinition Height="46" />
             <RowDefinition Height="Auto" />
@@ -231,60 +223,61 @@
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0" Margin="22,0" Background="Transparent" MouseLeftButtonDown="OnDragWindow">
-            <TextBlock x:Name="BrandText" FontSize="12" FontWeight="Bold" Foreground="{StaticResource Ink}"
+            <TextBlock x:Name="BrandText" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource Ink}"
                        VerticalAlignment="Center" />
             <Border Style="{StaticResource IconButton}" Width="28" Height="28" HorizontalAlignment="Right"
                     VerticalAlignment="Center" MouseLeftButtonUp="OnCancel" ToolTip="Закрыть">
-                <Path Data="{StaticResource CloseIcon}" Stroke="{StaticResource Secondary}" StrokeThickness="1.6"
+                <Path Data="{StaticResource CloseIcon}" Stroke="{DynamicResource Secondary}" StrokeThickness="1.6"
                       Stretch="Uniform" Width="13" Height="13" />
             </Border>
         </Grid>
 
         <StackPanel Grid.Row="1" Margin="22,0,22,18">
             <StackPanel Orientation="Horizontal">
-                <Path x:Name="HeadingGlyph" Data="{StaticResource DoneIcon}" Stroke="{StaticResource Accent}"
+                <Path x:Name="HeadingGlyph" Data="{StaticResource DoneIcon}" Stroke="{DynamicResource Accent}"
                       StrokeThickness="1.6" StrokeLineJoin="Round" Stretch="Uniform" Width="20" Height="20"
                       VerticalAlignment="Center" Margin="0,0,10,0" Visibility="Collapsed" />
-                <TextBlock x:Name="HeadingText" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource Ink}"
+                <TextBlock x:Name="HeadingText" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource Ink}"
                            TextWrapping="Wrap" LineHeight="24" VerticalAlignment="Center" MaxWidth="366" />
             </StackPanel>
 
-            <TextBlock x:Name="LeadText" FontSize="13" Foreground="{StaticResource Secondary}"
+            <TextBlock x:Name="LeadText" FontSize="13" Foreground="{DynamicResource Secondary}"
                        TextWrapping="Wrap" LineHeight="19" Margin="0,7,0,0" />
 
             <Border x:Name="AlertCard" CornerRadius="8" BorderThickness="1" Padding="13,11" Margin="0,14,0,0"
-                    Background="#FDF1EE" BorderBrush="#E9B3A6" Visibility="Collapsed">
+                    Background="{DynamicResource HoverFill}" BorderBrush="{DynamicResource HoverStroke}"
+                    Visibility="Collapsed">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <Path x:Name="AlertGlyph" Grid.Column="0" Data="{StaticResource AlertIcon}"
-                          Stroke="{StaticResource Accent}" StrokeThickness="1.5" StrokeLineJoin="Round"
+                          Stroke="{DynamicResource Accent}" StrokeThickness="1.5" StrokeLineJoin="Round"
                           Stretch="Uniform" Width="16" Height="16" VerticalAlignment="Top" Margin="0,1,0,0" />
                     <StackPanel Grid.Column="1" Margin="11,0,0,0">
                         <TextBlock x:Name="AlertTitle" FontSize="13" FontWeight="SemiBold"
-                                   Foreground="{StaticResource AccentDeep}" TextWrapping="Wrap" />
-                        <TextBlock x:Name="AlertDetail" FontSize="12" Foreground="{StaticResource Secondary}"
+                                   Foreground="{DynamicResource AccentDeep}" TextWrapping="Wrap" />
+                        <TextBlock x:Name="AlertDetail" FontSize="12" Foreground="{DynamicResource Secondary}"
                                    TextWrapping="Wrap" LineHeight="17" Margin="0,4,0,0" />
-                        <TextBlock x:Name="AlertNote" FontSize="12" Foreground="{StaticResource Faint}"
+                        <TextBlock x:Name="AlertNote" FontSize="12" Foreground="{DynamicResource Faint}"
                                    TextWrapping="Wrap" LineHeight="17" Margin="0,6,0,0" Visibility="Collapsed" />
                     </StackPanel>
                 </Grid>
             </Border>
 
             <Border x:Name="TrustCard" CornerRadius="8" BorderThickness="1" Padding="13,11" Margin="0,14,0,0"
-                    Background="{StaticResource Card}" BorderBrush="{StaticResource Line}">
+                    Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <Path Grid.Column="0" Data="{StaticResource LockIcon}" Stroke="{StaticResource Tertiary}"
+                    <Path Grid.Column="0" Data="{StaticResource LockIcon}" Stroke="{DynamicResource Tertiary}"
                           StrokeThickness="1.5" StrokeLineJoin="Round" Stretch="Uniform" Width="16" Height="16"
                           VerticalAlignment="Top" Margin="0,1,0,0" />
                     <TextBlock Grid.Column="1" Margin="11,0,0,0" FontSize="12" LineHeight="17"
-                               Foreground="{StaticResource Secondary}" TextWrapping="Wrap"
+                               Foreground="{DynamicResource Secondary}" TextWrapping="Wrap"
                                Text="Пароль хранится в диспетчере учётных данных Windows и никуда больше не передаётся." />
                 </Grid>
             </Border>
@@ -294,7 +287,7 @@
                 <Border x:Name="ServerField" Style="{StaticResource FieldBox}">
                     <Grid>
                         <TextBlock x:Name="ServerHint" Text="https://owa.example.com" FontSize="13"
-                                   Foreground="{StaticResource Faint}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Faint}" VerticalAlignment="Center"
                                    IsHitTestVisible="False" />
                         <TextBox x:Name="ServerBox" Style="{StaticResource BareInput}" />
                     </Grid>
@@ -304,7 +297,7 @@
                 <Border x:Name="UserField" Style="{StaticResource FieldBox}">
                     <Grid>
                         <TextBlock x:Name="UserHint" Text="домен\имя или имя@домен" FontSize="13"
-                                   Foreground="{StaticResource Faint}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Faint}" VerticalAlignment="Center"
                                    IsHitTestVisible="False" />
                         <TextBox x:Name="UserBox" Style="{StaticResource BareInput}" />
                     </Grid>
@@ -318,7 +311,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <Grid Grid.Column="0" Margin="0,0,8,0">
-                            <TextBlock x:Name="PasswordHint" FontSize="13" Foreground="{StaticResource Faint}"
+                            <TextBlock x:Name="PasswordHint" FontSize="13" Foreground="{DynamicResource Faint}"
                                        VerticalAlignment="Center" IsHitTestVisible="False" />
                             <PasswordBox x:Name="PasswordBox" Style="{StaticResource BarePassword}" />
                             <TextBox x:Name="PasswordPlain" Style="{StaticResource BareInput}"
@@ -327,30 +320,31 @@
                         <Border Grid.Column="1" x:Name="RevealButton" Style="{StaticResource IconButton}"
                                 MouseLeftButtonUp="OnToggleReveal" ToolTip="Показать пароль">
                             <Path x:Name="RevealGlyph" Data="{StaticResource EyeIcon}"
-                                  Stroke="{StaticResource Tertiary}" StrokeThickness="1.4" StrokeLineJoin="Round"
+                                  Stroke="{DynamicResource Tertiary}" StrokeThickness="1.4" StrokeLineJoin="Round"
                                   Stretch="Uniform" Width="15" Height="15" />
                         </Border>
                     </Grid>
                 </Border>
 
                 <StackPanel x:Name="CapsWarning" Orientation="Horizontal" Margin="0,7,0,0" Visibility="Collapsed">
-                    <Path Data="{StaticResource WarnIcon}" Stroke="{StaticResource AccentDeep}"
+                    <Path Data="{StaticResource WarnIcon}" Stroke="{DynamicResource AccentDeep}"
                           StrokeThickness="1.5" StrokeLineJoin="Round" Stretch="Uniform" Width="16" Height="16"
                           VerticalAlignment="Center" />
                     <TextBlock Text="Включён Caps Lock — пароль вводится прописными" FontSize="12"
-                               Foreground="{StaticResource AccentDeep}" Margin="7,0,0,0"
+                               Foreground="{DynamicResource AccentDeep}" Margin="7,0,0,0"
                                VerticalAlignment="Center" />
                 </StackPanel>
             </StackPanel>
 
             <StackPanel x:Name="DoneBlock" Visibility="Collapsed">
                 <Border CornerRadius="8" BorderThickness="1" Padding="14,13" Margin="0,14,0,0"
-                        Background="{StaticResource Card}" BorderBrush="{StaticResource Line}">
+                        Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}">
                     <StackPanel>
                         <TextBlock Text="Owl свернулся в трей. Значок слева от часов — нажмите на него, чтобы открыть окно."
-                                   FontSize="13" LineHeight="19" Foreground="{StaticResource Ink}"
+                                   FontSize="13" LineHeight="19" Foreground="{DynamicResource Ink}"
                                    TextWrapping="Wrap" />
-                        <Border CornerRadius="6" Background="#E9E6E3" Padding="10,7" Margin="0,11,0,0">
+                        <Border CornerRadius="6" Background="{DynamicResource FooterBar}" Padding="10,7"
+                                Margin="0,11,0,0">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -358,37 +352,38 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <Border Grid.Column="1" Width="16" Height="16" CornerRadius="4"
-                                        Background="{StaticResource Accent}" BorderBrush="{StaticResource Ink}"
+                                        Background="{DynamicResource Accent}" BorderBrush="{DynamicResource Ink}"
                                         BorderThickness="2" VerticalAlignment="Center" Margin="0,0,12,0" />
                                 <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                    <TextBlock x:Name="TrayClock" FontSize="11" Foreground="{StaticResource Secondary}"
+                                    <TextBlock x:Name="TrayClock" FontSize="11" Foreground="{DynamicResource Secondary}"
                                                HorizontalAlignment="Right" />
-                                    <TextBlock x:Name="TrayDate" FontSize="11" Foreground="{StaticResource Secondary}"
+                                    <TextBlock x:Name="TrayDate" FontSize="11" Foreground="{DynamicResource Secondary}"
                                                HorizontalAlignment="Right" />
                                 </StackPanel>
                             </Grid>
                         </Border>
                         <TextBlock Text="Так это выглядит на панели задач." FontSize="12"
-                                   Foreground="{StaticResource Faint}" Margin="0,9,0,0" />
+                                   Foreground="{DynamicResource Faint}" Margin="0,9,0,0" />
                     </StackPanel>
                 </Border>
                 <TextBlock Text="Если значка не видно — раскройте скрытые значки стрелкой на панели задач и закрепите Owl."
-                           FontSize="12" LineHeight="17" Foreground="{StaticResource Secondary}"
+                           FontSize="12" LineHeight="17" Foreground="{DynamicResource Secondary}"
                            TextWrapping="Wrap" Margin="0,12,0,0" />
             </StackPanel>
         </StackPanel>
 
-        <Border Grid.Row="2" Background="#E9E6E3" BorderBrush="{StaticResource Ink}" BorderThickness="0,2,0,0"
+        <Border Grid.Row="2" Background="{DynamicResource FooterBar}" BorderBrush="{DynamicResource Ink}"
+                BorderThickness="0,2,0,0"
                 Padding="22,13">
             <Grid>
                 <TextBlock x:Name="BusyText" Text="Обычно занимает 2–5 секунд" FontSize="12"
-                           Foreground="{StaticResource Secondary}" VerticalAlignment="Center"
+                           Foreground="{DynamicResource Secondary}" VerticalAlignment="Center"
                            TextWrapping="Wrap" MaxWidth="150" HorizontalAlignment="Left"
                            Visibility="Collapsed" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button x:Name="CancelButton" Style="{StaticResource SecondaryButton}" Click="OnCancel"
                             IsCancel="True" Margin="0,0,10,0">
-                        <TextBlock Text="Отмена" FontSize="13" Foreground="{StaticResource Ink}" />
+                        <TextBlock Text="Отмена" FontSize="13" Foreground="{DynamicResource Ink}" />
                     </Button>
                     <Button x:Name="ConnectButton" Style="{StaticResource PrimaryButton}" Click="OnConnect"
                             IsDefault="True">

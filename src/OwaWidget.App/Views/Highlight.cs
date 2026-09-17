@@ -1,16 +1,11 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
-using System.Windows.Media;
-using Brush = System.Windows.Media.Brush;
-using Color = System.Windows.Media.Color;
 
 namespace OwaWidget.App.Views;
 
 public static class Highlight
 {
-    private static readonly Brush Fill = Frozen(0xFB, 0xE2, 0xDB);
-
     public static readonly DependencyProperty TextProperty = DependencyProperty.RegisterAttached(
         "Text",
         typeof(string),
@@ -75,7 +70,7 @@ public static class Highlight
 
             if (marked[start])
             {
-                run.Background = Fill;
+                run.Background = Palette.Mark;
             }
 
             block.Inlines.Add(run);
@@ -117,12 +112,5 @@ public static class Highlight
         }
 
         return marked;
-    }
-
-    private static Brush Frozen(byte r, byte g, byte b)
-    {
-        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
-        brush.Freeze();
-        return brush;
     }
 }

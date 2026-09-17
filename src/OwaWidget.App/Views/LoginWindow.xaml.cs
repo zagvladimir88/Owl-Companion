@@ -161,14 +161,14 @@ public partial class LoginWindow : FluentWindow
     {
         if (error)
         {
-            field.BorderBrush = Palette.Accent;
+            field.SetResourceReference(System.Windows.Controls.Border.BorderBrushProperty, "Accent");
             field.BorderThickness = new Thickness(1);
             return;
         }
 
         if (focused)
         {
-            field.BorderBrush = Palette.Accent;
+            field.SetResourceReference(System.Windows.Controls.Border.BorderBrushProperty, "Accent");
             field.BorderThickness = new Thickness(2);
             field.Padding = field == PasswordField
                 ? new Thickness(10, 0, 6, 0)
@@ -185,10 +185,17 @@ public partial class LoginWindow : FluentWindow
     private void ShowAlert(bool error, string title, string detail, string note)
     {
         AlertCard.Visibility = Visibility.Visible;
-        AlertCard.Background = error ? Palette.ErrorTint : Palette.Card;
-        AlertCard.BorderBrush = error ? Palette.ErrorLine : Palette.Line;
+        AlertCard.SetResourceReference(
+            System.Windows.Controls.Border.BackgroundProperty,
+            error ? "HoverFill" : "Card");
 
-        AlertGlyph.Stroke = error ? Palette.Accent : Palette.Tertiary;
+        AlertCard.SetResourceReference(
+            System.Windows.Controls.Border.BorderBrushProperty,
+            error ? "HoverStroke" : "Line");
+
+        AlertGlyph.SetResourceReference(
+            System.Windows.Shapes.Path.StrokeProperty,
+            error ? "Accent" : "Tertiary");
         AlertGlyph.SetResourceReference(
             System.Windows.Shapes.Path.DataProperty,
             error ? "AlertIcon" : "InfoIcon");
@@ -353,16 +360,20 @@ public partial class LoginWindow : FluentWindow
 
         foreach (var input in new System.Windows.Controls.Control[] { ServerBox, UserBox, PasswordBox, PasswordPlain })
         {
-            input.Foreground = busy ? Palette.Faint : Palette.Ink;
+            input.SetResourceReference(
+                System.Windows.Controls.Control.ForegroundProperty,
+                busy ? "Faint" : "Ink");
         }
 
         foreach (var field in new[] { ServerField, UserField, PasswordField })
         {
-            field.Background = busy ? Palette.Surface : Palette.Card;
+            field.SetResourceReference(
+                System.Windows.Controls.Border.BackgroundProperty,
+                busy ? "Surface" : "Card");
 
             if (busy)
             {
-                field.BorderBrush = Palette.Divider;
+                field.SetResourceReference(System.Windows.Controls.Border.BorderBrushProperty, "Divider");
                 field.BorderThickness = new Thickness(1);
             }
             else

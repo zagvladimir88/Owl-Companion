@@ -56,7 +56,71 @@ public partial class FlyoutWindow : FluentWindow
         IsVisibleChanged += OnVisibleChanged;
         PreviewKeyDown += OnPreviewKeyDown;
 
+        PaintThemeToggle();
+        ThemeService.Changed += OnThemeChanged;
+        Closed += (_, _) => ThemeService.Changed -= OnThemeChanged;
+
         _ready = true;
+    }
+
+    private void OnToggleTheme(object sender, RoutedEventArgs e)
+    {
+        var next = ThemeService.IsDark ? ThemeChoice.Light : ThemeChoice.Dark;
+
+        _settings.Theme = ThemeService.Name(next);
+        AppStorage.Save(_settings);
+
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(120));
+
+        fade.Completed += (_, _) =>
+        {
+            var before = ThemeService.IsDark;
+            ThemeService.Apply(next);
+
+            if (ThemeService.IsDark == before)
+            {
+                Root.BeginAnimation(OpacityProperty, null);
+                Root.Opacity = 1;
+            }
+        };
+
+        Root.BeginAnimation(OpacityProperty, fade);
+    }
+
+    private void OnThemeChanged()
+    {
+        PaintThemeToggle();
+
+        if (_ready)
+        {
+            Rebuild();
+
+            if (MailPanel.Visibility == Visibility.Visible)
+            {
+                RenderMailList();
+            }
+        }
+
+        Root.BeginAnimation(OpacityProperty, null);
+
+        if (!IsVisible)
+        {
+            Root.Opacity = 1;
+            return;
+        }
+
+        Root.Opacity = 0;
+        Root.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(120)));
+    }
+
+    private void PaintThemeToggle()
+    {
+        var dark = ThemeService.IsDark;
+
+        ThemeGlyph.SetResourceReference(System.Windows.Shapes.Path.DataProperty, dark ? "SunIcon" : "MoonIcon");
+        ThemeGlyph.Width = dark ? 16 : 14.6;
+        ThemeGlyph.Height = ThemeGlyph.Width;
+        ThemeToggle.ToolTip = dark ? "Светлая тема" : "Тёмная тема";
     }
 
     public event Action<string>? MarkReadRequested;
@@ -199,9 +263,9 @@ public partial class FlyoutWindow : FluentWindow
             var mixed = restToday
                 .Select(o => (Sort: o.Start, Item: (object)StreamMeeting.Create(o, now, showLead: true)))
                 .Concat(mail
-                    .Where(m => (m.DateReceived ?? now).ToLocalTime().Date == today)
+                    .Where(m => m.DateReceived is { } received && received.ToLocalTime().Date == today)
                     .Take(4)
-                    .Select(m => (Sort: m.DateReceived ?? now, Item: (object)StreamMail.Create(m, now, IsUnreadMessage(m)))))
+                    .Select(m => (Sort: m.DateReceived!.Value, Item: (object)StreamMail.Create(m, now, IsUnreadMessage(m)))))
                 .OrderBy(x => x.Sort)
                 .Select(x => x.Item);
 
@@ -726,9 +790,20 @@ public partial class FlyoutWindow : FluentWindow
         System.Windows.Controls.TextBlock text,
         bool active)
     {
-        chip.Background = active ? Palette.Ink : System.Windows.Media.Brushes.Transparent;
-        chip.BorderBrush = active ? Palette.Ink : Palette.Line;
-        text.Foreground = active ? Palette.Surface : Palette.Secondary;
+        if (active)
+        {
+            chip.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, "Ink");
+        }
+        else
+        {
+            chip.Background = System.Windows.Media.Brushes.Transparent;
+        }
+
+        chip.SetResourceReference(System.Windows.Controls.Border.BorderBrushProperty, active ? "Ink" : "Line");
+        text.SetResourceReference(
+            System.Windows.Controls.TextBlock.ForegroundProperty,
+            active ? "Surface" : "Secondary");
+
         text.FontWeight = active ? FontWeights.SemiBold : FontWeights.Normal;
     }
 
@@ -763,7 +838,7 @@ public partial class FlyoutWindow : FluentWindow
 
     private static FlowDocument BuildBody(
         string text,
-        System.Windows.Media.Brush foreground,
+        string foreground,
         double lineHeight)
     {
         var document = new FlowDocument
@@ -771,9 +846,10 @@ public partial class FlyoutWindow : FluentWindow
             PagePadding = new Thickness(0, 0, 10, 14),
             TextAlignment = TextAlignment.Left,
             FontSize = 13,
-            Foreground = foreground,
             FontFamily = new System.Windows.Media.FontFamily("Segoe UI Variable Text, Segoe UI")
         };
+
+        document.SetResourceReference(FlowDocument.ForegroundProperty, foreground);
 
         var blocks = CleanBody(text)
             .Split("\n\n", StringSplitOptions.RemoveEmptyEntries)
@@ -886,7 +962,7 @@ public partial class FlyoutWindow : FluentWindow
 
         LetterBodyView.Document = BuildBody(
             string.IsNullOrWhiteSpace(message.Body) ? message.Preview ?? "(пустое письмо)" : message.Body!,
-            Palette.Ink,
+            "Ink",
             20);
 
         var ordered = _messages
@@ -1009,7 +1085,7 @@ public partial class FlyoutWindow : FluentWindow
 
         DetailBodyView.Document = BuildBody(
             string.IsNullOrWhiteSpace(occurrence.Body) ? "Организатор не добавил повестку." : occurrence.Body!,
-            Palette.Secondary,
+            "Secondary",
             20);
 
         DetailRsvp.Visibility = occurrence.IsMeeting && !occurrence.IsOrganizer
@@ -1295,11 +1371,11 @@ public partial class FlyoutWindow : FluentWindow
 
         if (isMail && _letter?.ServerId == serverId)
         {
-            LetterBodyView.Document = BuildBody(body!, Palette.Ink, 20);
+            LetterBodyView.Document = BuildBody(body!, "Ink", 20);
         }
         else if (!isMail && _detail?.ServerId == serverId)
         {
-            DetailBodyView.Document = BuildBody(body!, Palette.Secondary, 20);
+            DetailBodyView.Document = BuildBody(body!, "Secondary", 20);
         }
     }
 

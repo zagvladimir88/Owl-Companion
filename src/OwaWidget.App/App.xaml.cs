@@ -6,7 +6,6 @@ using OwaWidget.App.Views;
 using OwaWidget.Eas.Commands;
 using OwaWidget.Eas.Models;
 using OwaWidget.Eas.Recurrence;
-using Wpf.Ui.Appearance;
 using Application = System.Windows.Application;
 
 namespace OwaWidget.App;
@@ -59,7 +58,15 @@ public partial class App : Application
         _settings = AppStorage.LoadSettings();
         _state = AppStorage.LoadState();
 
-        ApplicationThemeManager.Apply(ApplicationTheme.Light);
+        ThemeService.Start(ThemeService.Parse(_settings.Theme));
+        ThemeService.TaskbarChanged += () => _tray?.Repaint();
+        ThemeService.Changed += () =>
+        {
+            if (_tray is not null)
+            {
+                _tray.Theme = ThemeService.Mode;
+            }
+        };
 
         if (CredentialStore.TryLoad(_settings.Server) is null && !ShowLogin())
         {
@@ -91,6 +98,14 @@ public partial class App : Application
             _settings.StartWithWindows = enabled;
             AppStorage.Save(_settings);
             ShortcutInstaller.SetStartupShortcut(enabled);
+        };
+        _tray.Theme = ThemeService.Mode;
+        _tray.ThemeChangeRequested += mode =>
+        {
+            ThemeService.Apply(mode);
+            _settings.Theme = ThemeService.Name(mode);
+            AppStorage.Save(_settings);
+            _tray.Theme = mode;
         };
         _tray.ResetCacheRequested += () =>
         {
@@ -150,6 +165,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        ThemeService.Stop();
         _updates?.ApplyOnExit();
         _cancellation?.Cancel();
         _session?.Dispose();
