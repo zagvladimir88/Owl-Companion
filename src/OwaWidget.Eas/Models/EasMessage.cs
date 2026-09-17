@@ -34,6 +34,14 @@ public sealed record EasMessage
         MessageClass is not null &&
         MessageClass.StartsWith("IPM.Schedule.Meeting", StringComparison.OrdinalIgnoreCase);
 
+    public bool IsMeetingCancellation =>
+        MessageClass is not null &&
+        MessageClass.StartsWith("IPM.Schedule.Meeting.Canceled", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsMeetingResponse =>
+        MessageClass is not null &&
+        MessageClass.StartsWith("IPM.Schedule.Meeting.Resp", StringComparison.OrdinalIgnoreCase);
+
     public bool IsEmpty =>
         string.IsNullOrWhiteSpace(From) &&
         string.IsNullOrWhiteSpace(Subject) &&
