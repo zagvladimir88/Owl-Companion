@@ -56,11 +56,22 @@ public partial class FlyoutWindow : FluentWindow
         IsVisibleChanged += OnVisibleChanged;
         PreviewKeyDown += OnPreviewKeyDown;
 
+        HeroCard.SizeChanged += (_, _) => ApplyStreamOffset();
+        HeroCard.IsVisibleChanged += (_, _) => ApplyStreamOffset();
+
         PaintThemeToggle();
         ThemeService.Changed += OnThemeChanged;
         Closed += (_, _) => ThemeService.Changed -= OnThemeChanged;
 
         _ready = true;
+    }
+
+    private void ApplyStreamOffset()
+    {
+        var top = HeroCard.Visibility == Visibility.Visible ? HeroCard.ActualHeight + 10 : 0;
+
+        StreamList.Margin = new Thickness(0, top, 10, 12);
+        EmptyBlock.Margin = new Thickness(0, top + 2, 10, 0);
     }
 
     private void OnToggleTheme(object sender, RoutedEventArgs e)
