@@ -633,35 +633,6 @@
                 </StackPanel>
             </Border>
 
-            <Border Grid.Row="2" x:Name="CalmCard" Margin="22,0,22,10" Padding="18,15,18,16" CornerRadius="10"
-                    Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
-                    Effect="{DynamicResource CardShadow}" Visibility="Collapsed">
-                <StackPanel>
-                    <Grid>
-                        <TextBlock x:Name="CalmLabel" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Ink}"
-                                   VerticalAlignment="Center" />
-                        <TextBlock x:Name="CalmNote" FontSize="12" Foreground="{DynamicResource Faint}"
-                                   HorizontalAlignment="Right" VerticalAlignment="Center" />
-                    </Grid>
-                    <TextBlock x:Name="CalmTitle" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource Ink}"
-                               Margin="0,9,0,0" TextWrapping="Wrap" LineHeight="27" />
-                    <TextBlock x:Name="CalmDetail" FontSize="13" Foreground="{DynamicResource Secondary}"
-                               Margin="0,7,0,0" TextTrimming="CharacterEllipsis" />
-                    <Border x:Name="CalmButton" Margin="0,14,0,0" Padding="13,0" Height="36" CornerRadius="8"
-                            HorizontalAlignment="Left" Background="{DynamicResource Card}"
-                            BorderBrush="{DynamicResource Line}" BorderThickness="1" Cursor="Hand"
-                            MouseLeftButtonUp="OnJumpToNextDay">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <Path Data="M2.5,3.5 L15.5,3.5 L15.5,15.5 L2.5,15.5 Z M2.5,7 L15.5,7 M6,1.8 L6,5 M12,1.8 L12,5"
-                                  Stroke="{DynamicResource Ink}" StrokeThickness="1.5" StrokeLineJoin="Round"
-                                  Stretch="Uniform" Width="16" Height="16" VerticalAlignment="Center" />
-                            <TextBlock x:Name="CalmButtonText" FontSize="13" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource Ink}" Margin="9,0,0,0" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </Border>
-
             <StackPanel Grid.Row="2" x:Name="SearchTools" Margin="22,0,22,10" Visibility="Collapsed">
                 <TextBlock x:Name="FiltersLabel" FontSize="11" FontWeight="Bold"
                            Foreground="{DynamicResource Secondary}" Margin="0,0,0,7" />
@@ -710,6 +681,36 @@
                         </ItemsControl.ItemTemplateSelector>
                     </ItemsControl>
                 </ScrollViewer>
+
+                <Border x:Name="CalmCard" Margin="0,0,10,0" Padding="18,15,18,16" CornerRadius="10"
+                        VerticalAlignment="Top" Background="{DynamicResource Card}"
+                        BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                        Effect="{DynamicResource CardShadow}" Visibility="Collapsed">
+                    <StackPanel>
+                        <Grid>
+                            <TextBlock x:Name="CalmLabel" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Ink}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock x:Name="CalmNote" FontSize="12" Foreground="{DynamicResource Faint}"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                        <TextBlock x:Name="CalmTitle" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource Ink}"
+                                   Margin="0,9,0,0" TextWrapping="Wrap" LineHeight="27" />
+                        <TextBlock x:Name="CalmDetail" FontSize="13" Foreground="{DynamicResource Secondary}"
+                                   Margin="0,7,0,0" TextTrimming="CharacterEllipsis" />
+                        <Border x:Name="CalmButton" Margin="0,14,0,0" Padding="13,0" Height="36" CornerRadius="8"
+                                HorizontalAlignment="Left" Background="{DynamicResource Card}"
+                                BorderBrush="{DynamicResource Line}" BorderThickness="1" Cursor="Hand"
+                                MouseLeftButtonUp="OnJumpToNextDay">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="M2.5,3.5 L15.5,3.5 L15.5,15.5 L2.5,15.5 Z M2.5,7 L15.5,7 M6,1.8 L6,5 M12,1.8 L12,5"
+                                      Stroke="{DynamicResource Ink}" StrokeThickness="1.5" StrokeLineJoin="Round"
+                                      Stretch="Uniform" Width="16" Height="16" VerticalAlignment="Center" />
+                                <TextBlock x:Name="CalmButtonText" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource Ink}" Margin="9,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
 
                 <Border x:Name="HeroCard" Margin="0,0,10,0" Padding="18,13,18,14" CornerRadius="10"
                         VerticalAlignment="Top" Background="{DynamicResource Card}" BorderThickness="0,2,0,0"

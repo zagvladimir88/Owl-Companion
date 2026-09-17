@@ -20,6 +20,10 @@ public partial class FlyoutWindow : FluentWindow
 {
     private static readonly CultureInfo Russian = CultureInfo.GetCultureInfo("ru-RU");
 
+    private const double WheelStep = 85;
+    private const double FadeHeight = 14;
+    private const double ScrollSmoothing = 0.22;
+
     private readonly AppSettings _settings;
     private readonly DispatcherTimer _ticker;
 
@@ -37,6 +41,10 @@ public partial class FlyoutWindow : FluentWindow
     private bool _searchOpen;
     private bool _ready;
     private string _filter = string.Empty;
+    private double _scrollTarget;
+    private double _scrollApplied;
+    private bool _scrollAnimating;
+    private LinearGradientBrush? _streamFade;
 
     public FlyoutWindow(AppSettings settings)
     {
@@ -58,6 +66,11 @@ public partial class FlyoutWindow : FluentWindow
 
         HeroCard.SizeChanged += (_, _) => ApplyStreamOffset();
         HeroCard.IsVisibleChanged += (_, _) => ApplyStreamOffset();
+        CalmCard.SizeChanged += (_, _) => ApplyStreamOffset();
+        CalmCard.IsVisibleChanged += (_, _) => ApplyStreamOffset();
+        StreamScroll.SizeChanged += (_, _) => BuildStreamFade();
+        StreamScroll.PreviewMouseWheel += OnStreamMouseWheel;
+        StreamScroll.ScrollChanged += OnStreamScrollChanged;
 
         PaintThemeToggle();
         ThemeService.Changed += OnThemeChanged;
@@ -66,12 +79,131 @@ public partial class FlyoutWindow : FluentWindow
         _ready = true;
     }
 
+    private FrameworkElement? ActiveCard =>
+        HeroCard.Visibility == Visibility.Visible ? HeroCard :
+        CalmCard.Visibility == Visibility.Visible ? CalmCard : null;
+
     private void ApplyStreamOffset()
     {
-        var top = HeroCard.Visibility == Visibility.Visible ? HeroCard.ActualHeight + 10 : 0;
+        var top = ActiveCard is { } card ? card.ActualHeight + 10 : 0;
 
         StreamList.Margin = new Thickness(0, top, 10, 12);
         EmptyBlock.Margin = new Thickness(0, top + 2, 10, 0);
+
+        BuildStreamFade();
+    }
+
+    private void BuildStreamFade()
+    {
+        var edge = ActiveCard?.ActualHeight ?? 0;
+        var height = StreamScroll.ActualHeight;
+
+        if (height <= edge + FadeHeight)
+        {
+            _streamFade = null;
+            StreamScroll.OpacityMask = null;
+            return;
+        }
+
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new System.Windows.Point(0, 0),
+            EndPoint = new System.Windows.Point(0, 1)
+        };
+
+        brush.GradientStops.Add(new GradientStop(Colors.Black, 0));
+        brush.GradientStops.Add(new GradientStop(Colors.Black, edge / height));
+        brush.GradientStops.Add(new GradientStop(Colors.Transparent, edge / height));
+        brush.GradientStops.Add(new GradientStop(Colors.Black, (edge + FadeHeight) / height));
+        brush.Freeze();
+
+        _streamFade = brush;
+        StreamScroll.OpacityMask = StreamScroll.VerticalOffset > 0.5 ? _streamFade : null;
+    }
+
+    private void OnStreamScrollChanged(object sender, System.Windows.Controls.ScrollChangedEventArgs e)
+    {
+        if (!ReferenceEquals(e.OriginalSource, StreamScroll))
+        {
+            return;
+        }
+
+        StreamScroll.OpacityMask = e.VerticalOffset > 0.5 ? _streamFade : null;
+    }
+
+    private void OnStreamMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.Delta == 0 || StreamScroll.ScrollableHeight <= 0 || HasNestedScroll(e.OriginalSource as DependencyObject))
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        var from = _scrollAnimating ? _scrollTarget : StreamScroll.VerticalOffset;
+        _scrollTarget = Math.Clamp(from - e.Delta / 120.0 * WheelStep, 0, StreamScroll.ScrollableHeight);
+
+        if (_scrollAnimating)
+        {
+            return;
+        }
+
+        _scrollAnimating = true;
+        _scrollApplied = StreamScroll.VerticalOffset;
+        CompositionTarget.Rendering += OnScrollTick;
+    }
+
+    private void OnScrollTick(object? sender, EventArgs e)
+    {
+        var current = StreamScroll.VerticalOffset;
+
+        if (Math.Abs(current - _scrollApplied) > 4)
+        {
+            StopScrollAnimation();
+            return;
+        }
+
+        _scrollTarget = Math.Clamp(_scrollTarget, 0, StreamScroll.ScrollableHeight);
+        var next = current + ((_scrollTarget - current) * ScrollSmoothing);
+
+        if (Math.Abs(_scrollTarget - next) < 0.5)
+        {
+            next = _scrollTarget;
+            StreamScroll.ScrollToVerticalOffset(next);
+            StopScrollAnimation();
+            return;
+        }
+
+        StreamScroll.ScrollToVerticalOffset(next);
+        _scrollApplied = next;
+    }
+
+    private void StopScrollAnimation()
+    {
+        if (!_scrollAnimating)
+        {
+            return;
+        }
+
+        _scrollAnimating = false;
+        CompositionTarget.Rendering -= OnScrollTick;
+    }
+
+    private bool HasNestedScroll(DependencyObject? source)
+    {
+        while (source is not null && !ReferenceEquals(source, StreamScroll))
+        {
+            if (source is System.Windows.Controls.ScrollViewer { ScrollableHeight: > 0 })
+            {
+                return true;
+            }
+
+            source = source is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(source) ?? LogicalTreeHelper.GetParent(source)
+                : LogicalTreeHelper.GetParent(source);
+        }
+
+        return false;
     }
 
     private void OnToggleTheme(object sender, RoutedEventArgs e)
