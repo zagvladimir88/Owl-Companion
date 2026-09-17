@@ -132,6 +132,7 @@ public sealed class EasSession : IDisposable
         DateTimeOffset? instanceStart,
         MeetingUserResponse response,
         bool fromInbox,
+        bool notifyOrganizer = true,
         CancellationToken cancellationToken = default)
     {
         var collectionId = fromInbox ? _state.InboxId : _state.CalendarId;
@@ -149,11 +150,13 @@ public sealed class EasSession : IDisposable
                     CollectionId = collectionId,
                     RequestId = serverId,
                     Response = response,
-                    InstanceId = instanceStart
+                    InstanceId = instanceStart,
+                    SendResponse = notifyOrganizer
                 }, cancellationToken),
                 cancellationToken);
 
-            Log.Info($"meeting response {response} accepted, calendarId={result.CalendarId ?? "-"}");
+            Log.Info(
+                $"meeting response {response} accepted, notify={notifyOrganizer}, calendarId={result.CalendarId ?? "-"}");
 
             await DrainCalendarAsync(cancellationToken);
             await DrainMailAsync(notify: false, cancellationToken);
@@ -162,7 +165,7 @@ public sealed class EasSession : IDisposable
         }
         catch (Exception exception)
         {
-            Log.Error($"meeting response {response} failed", exception);
+            Log.Error($"meeting response {response} (notify={notifyOrganizer}) failed", exception);
             return false;
         }
     }

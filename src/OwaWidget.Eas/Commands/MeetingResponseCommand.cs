@@ -19,12 +19,16 @@ public sealed class MeetingResponseRequest
     public MeetingUserResponse Response { get; init; }
 
     public DateTimeOffset? InstanceId { get; init; }
+
+    public bool SendResponse { get; init; } = true;
 }
 
 public sealed record MeetingResponseResult(int Status, string? CalendarId);
 
 public static class MeetingResponseCommand
 {
+    public const string SilentProtocolVersion = "16.1";
+
     public static async Task<MeetingResponseResult> ExecuteAsync(
         EasClient client,
         MeetingResponseRequest request,
@@ -48,7 +52,11 @@ public static class MeetingResponseCommand
         writer.EndElement();
         writer.EndElement();
 
-        var root = await client.SendAsync("MeetingResponse", writer, cancellationToken: cancellationToken)
+        var root = await client.SendAsync(
+                "MeetingResponse",
+                writer,
+                protocolVersion: request.SendResponse ? null : SilentProtocolVersion,
+                cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
         if (root is null)

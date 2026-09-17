@@ -262,7 +262,7 @@ public sealed class MailListRow
 
     public Brush SubjectBrush => IsUnread ? Palette.Ink : Palette.Secondary;
 
-    public static MailListRow Create(EasMessage message, DateTimeOffset now, bool unread)
+    public static MailListRow Create(EasMessage message, DateTimeOffset now, bool unread, bool answered = false)
     {
         var received = (message.DateReceived ?? now).ToLocalTime();
         var robot = !message.DisplaySender.Contains(' ');
@@ -276,7 +276,7 @@ public sealed class MailListRow
             Subject = string.IsNullOrWhiteSpace(message.Subject) ? "(без темы)" : message.Subject!,
             Preview = (message.Preview ?? string.Empty).Replace('\n', ' ').Trim(),
             IsUnread = unread,
-            IsInvitation = message.IsMeetingRequest
+            IsInvitation = message.IsMeetingRequest && !answered
         };
     }
 }
