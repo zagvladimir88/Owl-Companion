@@ -147,6 +147,11 @@ public sealed class NotificationService
 
     private bool IsRelevant(EasMessage message)
     {
+        if (message.IsMeetingCancellation || message.IsMeetingResponse)
+        {
+            return false;
+        }
+
         if (_settings.IgnoredSenders.Count == 0)
         {
             return true;
