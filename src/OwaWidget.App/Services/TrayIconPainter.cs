@@ -5,13 +5,22 @@ namespace OwaWidget.App.Services;
 
 public static class TrayIconPainter
 {
-    private static readonly Color Ink = Color.FromArgb(0x20, 0x1E, 0x1D);
     private static readonly Color Accent = Color.FromArgb(0xEC, 0x30, 0x13);
-    private static readonly Color Idle = Color.FromArgb(0xA3, 0x9D, 0x99);
-    private static readonly Color Muted = Color.FromArgb(0x57, 0x52, 0x4F);
 
-    public static Bitmap Paint(TrayPresentation presentation, int size)
+    private static readonly Color LightFrame = Color.FromArgb(0x20, 0x1E, 0x1D);
+    private static readonly Color LightIdle = Color.FromArgb(0xA3, 0x9D, 0x99);
+    private static readonly Color LightMuted = Color.FromArgb(0x57, 0x52, 0x4F);
+
+    private static readonly Color DarkFrame = Color.FromArgb(0xF3, 0xF2, 0xF2);
+    private static readonly Color DarkIdle = Color.FromArgb(0x6A, 0x65, 0x61);
+    private static readonly Color DarkMuted = Color.FromArgb(0xA3, 0x9D, 0x99);
+
+    public static Bitmap Paint(TrayPresentation presentation, int size, bool darkTaskbar)
     {
+        var frame = darkTaskbar ? DarkFrame : LightFrame;
+        var idle = darkTaskbar ? DarkIdle : LightIdle;
+        var muted = darkTaskbar ? DarkMuted : LightMuted;
+
         var scale = size / 16f;
         var border = 2f * scale;
         var radius = 4f * scale;
@@ -34,9 +43,12 @@ public static class TrayIconPainter
         var inner = RectangleF.Inflate(outer, -border / 2f, -border / 2f);
 
         using (var innerPath = Rounded(inner, Math.Max(1f, radius - border)))
-        using (var white = new SolidBrush(Color.White))
         {
-            graphics.FillPath(white, innerPath);
+            if (!darkTaskbar)
+            {
+                using var white = new SolidBrush(Color.White);
+                graphics.FillPath(white, innerPath);
+            }
 
             var height = presentation.State switch
             {
@@ -50,7 +62,7 @@ public static class TrayIconPainter
                 var saved = graphics.Clip;
                 graphics.SetClip(innerPath);
 
-                using (var brush = new SolidBrush(presentation.State == TrayState.Free ? Idle : Accent))
+                using (var brush = new SolidBrush(presentation.State == TrayState.Free ? idle : Accent))
                 {
                     graphics.FillRectangle(
                         brush,
@@ -61,7 +73,7 @@ public static class TrayIconPainter
             }
         }
 
-        using (var pen = new Pen(presentation.State == TrayState.Offline ? Muted : Ink, border))
+        using (var pen = new Pen(presentation.State == TrayState.Offline ? muted : frame, border))
         {
             if (presentation.State == TrayState.Offline)
             {

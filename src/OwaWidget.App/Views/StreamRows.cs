@@ -11,18 +11,38 @@ namespace OwaWidget.App.Views;
 
 public static class Palette
 {
-    public static readonly Brush Ink = Frozen(0x20, 0x1E, 0x1D);
-    public static readonly Brush Secondary = Frozen(0x57, 0x52, 0x4F);
-    public static readonly Brush Tertiary = Frozen(0x6F, 0x6A, 0x67);
-    public static readonly Brush Faint = Frozen(0x8A, 0x84, 0x81);
-    public static readonly Brush Line = Frozen(0xCF, 0xCA, 0xC6);
-    public static readonly Brush Divider = Frozen(0xE0, 0xDC, 0xD9);
-    public static readonly Brush Surface = Frozen(0xF3, 0xF2, 0xF2);
-    public static readonly Brush Card = Frozen(0xFF, 0xFF, 0xFF);
-    public static readonly Brush Accent = Frozen(0xEC, 0x30, 0x13);
-    public static readonly Brush AccentDeep = Frozen(0xB8, 0x1F, 0x05);
-    public static readonly Brush ErrorTint = Frozen(0xFD, 0xF1, 0xEE);
-    public static readonly Brush ErrorLine = Frozen(0xE9, 0xB3, 0xA6);
+    private static readonly Brush Fallback = Frozen(0x20, 0x1E, 0x1D);
+
+    public static Brush Ink => Lookup("Ink");
+
+    public static Brush Secondary => Lookup("Secondary");
+
+    public static Brush Tertiary => Lookup("Tertiary");
+
+    public static Brush Faint => Lookup("Faint");
+
+    public static Brush Line => Lookup("Line");
+
+    public static Brush Divider => Lookup("Divider");
+
+    public static Brush Surface => Lookup("Surface");
+
+    public static Brush Card => Lookup("Card");
+
+    public static Brush Accent => Lookup("Accent");
+
+    public static Brush AccentDeep => Lookup("AccentDeep");
+
+    public static Brush ErrorTint => Lookup("HoverFill");
+
+    public static Brush ErrorLine => Lookup("HoverStroke");
+
+    public static Brush Mark => Lookup("MarkFill");
+
+    private static Brush Lookup(string key)
+    {
+        return System.Windows.Application.Current?.TryFindResource(key) as Brush ?? Fallback;
+    }
 
     private static Brush Frozen(byte r, byte g, byte b)
     {

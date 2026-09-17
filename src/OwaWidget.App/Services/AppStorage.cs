@@ -34,6 +34,8 @@ public sealed class AppSettings
     public bool StartWithWindows { get; set; }
 
     public bool RespectAppointmentReminder { get; set; } = true;
+
+    public string Theme { get; set; } = "system";
 }
 
 public sealed class AppState
