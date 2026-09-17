@@ -13,6 +13,7 @@ using OwaWidget.Eas.Recurrence;
 using Wpf.Ui.Controls;
 using Clipboard = System.Windows.Clipboard;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using Point = System.Windows.Point;
 
 namespace OwaWidget.App.Views;
 
@@ -36,6 +37,8 @@ public partial class FlyoutWindow : FluentWindow
     private string _mailFilter = "all";
     private readonly HashSet<string> _locallyRead = new(StringComparer.Ordinal);
     private readonly HashSet<string> _bodyLoaded = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _locallyAnswered = new(StringComparer.Ordinal);
+    private Action<bool>? _acceptMenuAction;
     private bool _attendeesExpanded;
     private bool _offline;
     private bool _searchOpen;
@@ -270,10 +273,11 @@ public partial class FlyoutWindow : FluentWindow
 
     public Func<string, bool, Task<string?>>? BodyLoader { get; set; }
 
-    public Func<string, DateTimeOffset?, MeetingReply, bool, Task<bool>>? MeetingResponder { get; set; }
+    public Func<MeetingReplyCommand, Task<bool>>? MeetingResponder { get; set; }
 
     public void ShowNearTray()
     {
+        HideAcceptMenu();
         _detail = null;
         _letter = null;
         DetailPanel.Visibility = Visibility.Collapsed;
@@ -912,7 +916,7 @@ public partial class FlyoutWindow : FluentWindow
         var unread = selected.Where(IsUnreadMessage).ToList();
         var read = selected.Where(m => !IsUnreadMessage(m)).ToList();
 
-        items.AddRange(unread.Select(m => MailListRow.Create(m, now, IsUnreadMessage(m))));
+        items.AddRange(unread.Select(m => MailListRow.Create(m, now, IsUnreadMessage(m), _locallyAnswered.Contains(m.ServerId))));
 
         if (read.Count > 0)
         {
@@ -921,7 +925,7 @@ public partial class FlyoutWindow : FluentWindow
                 items.Add(new StreamSection { Label = Tracking.Wide("ПРОЧИТАННЫЕ") });
             }
 
-            items.AddRange(read.Select(m => MailListRow.Create(m, now, IsUnreadMessage(m))));
+            items.AddRange(read.Select(m => MailListRow.Create(m, now, IsUnreadMessage(m), _locallyAnswered.Contains(m.ServerId))));
         }
 
         MailList.ItemsSource = items;
@@ -1243,12 +1247,16 @@ public partial class FlyoutWindow : FluentWindow
             _ => "Вы ещё не ответили на приглашение"
         };
 
+        ShowRsvpButtons(occurrence.ResponseType is not (
+            EasResponseType.Accepted or EasResponseType.Tentative or EasResponseType.Declined));
+
         ShowPanel(DetailPanel);
         LoadFullBody(occurrence.ServerId, isMail: false);
     }
 
     private void CloseDetail()
     {
+        HideAcceptMenu();
         _detail = null;
         HidePanel(DetailPanel);
     }
@@ -1445,7 +1453,7 @@ public partial class FlyoutWindow : FluentWindow
         };
     }
 
-    private async void OnRsvp(object sender, RoutedEventArgs e)
+    private void OnRsvp(object sender, RoutedEventArgs e)
     {
         if (_detail is null || sender is not FrameworkElement { Tag: string tag })
         {
@@ -1459,28 +1467,62 @@ public partial class FlyoutWindow : FluentWindow
             return;
         }
 
-        var reply = ParseReply(tag);
-        DetailRsvpLabel.Text = "Отправляем ответ…";
+        SendDetailReply(_detail, ParseReply(tag), notifyOrganizer: true);
+    }
 
-        var instance = _detail.IsRecurring ? _detail.OriginalStart : (DateTimeOffset?)null;
-        var ok = await MeetingResponder.Invoke(_detail.ServerId, instance, reply, false);
+    private async void SendDetailReply(EasOccurrence detail, MeetingReply reply, bool notifyOrganizer)
+    {
+        if (MeetingResponder is null)
+        {
+            return;
+        }
+
+        DetailRsvpLabel.Text = notifyOrganizer ? "Отправляем ответ…" : "Принимаем без ответа…";
+
+        var instance = detail.IsRecurring ? detail.OriginalStart : (DateTimeOffset?)null;
+        var ok = await MeetingResponder.Invoke(
+            new MeetingReplyCommand(detail.ServerId, instance, reply, false, notifyOrganizer));
+
+        if (_detail?.ServerId != detail.ServerId)
+        {
+            return;
+        }
 
         DetailRsvpLabel.Text = ok
             ? reply switch
             {
+                MeetingReply.Accept when !notifyOrganizer => "Ваш ответ: принято, организатор не уведомлён",
                 MeetingReply.Accept => "Ваш ответ: принято",
                 MeetingReply.Tentative => "Ваш ответ: под вопросом",
                 _ => "Ваш ответ: отклонено"
             }
-            : "Не удалось отправить ответ — откройте встречу в OWA";
+            : notifyOrganizer
+                ? "Не удалось отправить ответ — откройте встречу в OWA"
+                : "Не удалось принять без ответа — попробуйте «Принять»";
+
+        ShowRsvpButtons(!ok);
     }
 
-    private async void OnInvitationReply(object sender, RoutedEventArgs e)
+    private void ShowRsvpButtons(bool visible)
+    {
+        DetailRsvpButtons.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        DetailRsvpChange.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void OnRsvpChange(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        ShowRsvpButtons(true);
+    }
+
+    private void OnInvitationReply(object sender, MouseButtonEventArgs e)
     {
         if (sender is not FrameworkElement { Tag: string tag, DataContext: MailListRow row })
         {
             return;
         }
+
+        e.Handled = true;
 
         if (MeetingResponder is null)
         {
@@ -1489,13 +1531,102 @@ public partial class FlyoutWindow : FluentWindow
             return;
         }
 
-        var ok = await MeetingResponder.Invoke(row.Message.ServerId, null, ParseReply(tag), true);
+        SendInvitationReply(row, ParseReply(tag), notifyOrganizer: true);
+    }
+
+    private async void SendInvitationReply(MailListRow row, MeetingReply reply, bool notifyOrganizer)
+    {
+        if (MeetingResponder is null)
+        {
+            return;
+        }
+
+        var ok = await MeetingResponder.Invoke(
+            new MeetingReplyCommand(row.Message.ServerId, null, reply, true, notifyOrganizer));
 
         if (ok)
         {
             _locallyRead.Add(row.Message.ServerId);
+            _locallyAnswered.Add(row.Message.ServerId);
             RenderMailList();
         }
+    }
+
+    private void OnRsvpAcceptMenu(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+
+        if (_detail is not { } detail || MeetingResponder is null)
+        {
+            return;
+        }
+
+        _acceptMenuAction = notify => SendDetailReply(detail, MeetingReply.Accept, notify);
+        ShowAcceptMenu((FrameworkElement)sender);
+    }
+
+    private void OnInvitationAcceptMenu(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+
+        if (sender is not FrameworkElement { DataContext: MailListRow row } anchor || MeetingResponder is null)
+        {
+            return;
+        }
+
+        _acceptMenuAction = notify => SendInvitationReply(row, MeetingReply.Accept, notify);
+        ShowAcceptMenu(anchor);
+    }
+
+    private void ShowAcceptMenu(FrameworkElement anchor)
+    {
+        AcceptMenuLayer.Visibility = Visibility.Visible;
+        AcceptMenuLayer.UpdateLayout();
+
+        var origin = anchor.TransformToVisual(AcceptMenuLayer).Transform(new Point(0, 0));
+        var width = AcceptMenuCard.ActualWidth;
+        var height = AcceptMenuCard.ActualHeight;
+
+        var left = Math.Max(12, Math.Min(origin.X + anchor.ActualWidth - width, AcceptMenuLayer.ActualWidth - width - 12));
+        var top = origin.Y - height - 6;
+
+        if (top < 12)
+        {
+            top = origin.Y + anchor.ActualHeight + 6;
+        }
+
+        AcceptMenuCard.Margin = new Thickness(left, top, 0, 0);
+    }
+
+    private void HideAcceptMenu()
+    {
+        _acceptMenuAction = null;
+        AcceptMenuLayer.Visibility = Visibility.Collapsed;
+    }
+
+    private void OnAcceptMenuHold(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+    }
+
+    private void OnAcceptMenuDismiss(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        HideAcceptMenu();
+    }
+
+    private void OnAcceptMenuPick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+
+        if (sender is not FrameworkElement { Tag: string tag })
+        {
+            return;
+        }
+
+        var action = _acceptMenuAction;
+        HideAcceptMenu();
+        action?.Invoke(tag == "notify");
     }
 
     private async void LoadFullBody(string serverId, bool isMail)
@@ -1581,3 +1712,10 @@ public enum MeetingReply
     Tentative,
     Decline
 }
+
+public readonly record struct MeetingReplyCommand(
+    string ServerId,
+    DateTimeOffset? Instance,
+    MeetingReply Reply,
+    bool FromInbox,
+    bool NotifyOrganizer);

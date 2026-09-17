@@ -61,7 +61,7 @@ public static class PingCommand
 
         var timeout = TimeSpan.FromSeconds(heartbeatSeconds + 30);
 
-        var root = await client.SendAsync("Ping", writer, timeout, cancellationToken).ConfigureAwait(false);
+        var root = await client.SendAsync("Ping", writer, timeout, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         if (root is null)
         {

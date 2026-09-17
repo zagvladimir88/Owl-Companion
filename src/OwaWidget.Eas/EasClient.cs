@@ -58,15 +58,17 @@ public sealed class EasClient : IDisposable
         string command,
         WbxmlWriter writer,
         TimeSpan? timeout = null,
+        string? protocolVersion = null,
         CancellationToken cancellationToken = default)
     {
-        return SendAsync(command, writer.ToArray(), timeout, cancellationToken);
+        return SendAsync(command, writer.ToArray(), timeout, protocolVersion, cancellationToken);
     }
 
     public async Task<WbxmlElement?> SendAsync(
         string command,
         byte[] body,
         TimeSpan? timeout = null,
+        string? protocolVersion = null,
         CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, BuildUri(command))
@@ -75,7 +77,7 @@ public sealed class EasClient : IDisposable
         };
 
         request.Content.Headers.ContentType = new MediaTypeHeaderValue(WbxmlMediaType);
-        ApplyHeaders(request);
+        ApplyHeaders(request, protocolVersion: protocolVersion);
 
         using var cts = CreateTimeout(timeout ?? _options.DefaultTimeout, cancellationToken);
 
@@ -152,10 +154,10 @@ public sealed class EasClient : IDisposable
         return builder.Uri;
     }
 
-    private void ApplyHeaders(HttpRequestMessage request, bool includePolicyKey = true)
+    private void ApplyHeaders(HttpRequestMessage request, bool includePolicyKey = true, string? protocolVersion = null)
     {
         request.Headers.TryAddWithoutValidation("Authorization", _authorization);
-        request.Headers.TryAddWithoutValidation("MS-ASProtocolVersion", _options.ProtocolVersion);
+        request.Headers.TryAddWithoutValidation("MS-ASProtocolVersion", protocolVersion ?? _options.ProtocolVersion);
         request.Headers.TryAddWithoutValidation("User-Agent", _options.UserAgent);
         request.Headers.TryAddWithoutValidation("Accept", "*/*");
 

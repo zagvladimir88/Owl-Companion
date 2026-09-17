@@ -29,6 +29,9 @@
         <Geometry x:Key="ClockIcon">M9,2.5 A6.5,6.5 0 1 1 8.99,2.5 Z M9,5.2 L9,9.2 L11.8,10.8</Geometry>
         <Geometry x:Key="MoonIcon">M9,2.25 A4.5,4.5 0 0 0 15.75,9 A6.75,6.75 0 1 1 9,2.25 Z</Geometry>
         <Geometry x:Key="SunIcon">M9,5.6 A3.4,3.4 0 1 1 8.99,5.6 Z M9,1.6 L9,3.4 M9,14.6 L9,16.4 M1.6,9 L3.4,9 M14.6,9 L16.4,9 M3.8,3.8 L5.1,5.1 M12.9,12.9 L14.2,14.2 M14.2,3.8 L12.9,5.1 M5.1,12.9 L3.8,14.2</Geometry>
+        <Geometry x:Key="CheckIcon">M3.4,9.4 L7.1,13.1 L14.6,5.2</Geometry>
+        <Geometry x:Key="QuestionIcon">M9,2.5 A6.5,6.5 0 1 1 8.99,2.5 Z M6.9,7 A2.1,2.1 0 1 1 9,9.4 L9,10.9 M9,13.2 L9,13.3</Geometry>
+        <Geometry x:Key="BubbleIcon">M2.6,4 L15.4,4 L15.4,12.2 L8.4,12.2 L5.2,15.2 L5.2,12.2 L2.6,12.2 Z</Geometry>
 
         <Style x:Key="SelectableBody" TargetType="FlowDocumentScrollViewer">
             <Setter Property="Background" Value="Transparent" />
@@ -79,6 +82,18 @@
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="{DynamicResource IconHover}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="AcceptMenuItem" TargetType="Border">
+            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="Padding" Value="11,8" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource HoverFill}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -506,22 +521,34 @@
                                    Visibility="{Binding PreviewVisibility}" />
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,2"
                                     Visibility="{Binding InvitationVisibility}">
-                            <Border Height="28" Padding="12,0" CornerRadius="8" Background="{DynamicResource Accent}"
-                                    Cursor="Hand" Tag="accept" MouseLeftButtonUp="OnInvitationReply">
+                            <Border Height="28" Padding="12,0" CornerRadius="8,0,0,8"
+                                    Background="{DynamicResource Accent}" Cursor="Hand" Tag="accept"
+                                    PreviewMouseLeftButtonDown="OnInvitationReply">
                                 <TextBlock Text="Принять" FontSize="12" FontWeight="SemiBold" Foreground="White"
                                            VerticalAlignment="Center" />
+                            </Border>
+                            <Border Width="26" Height="28" CornerRadius="0,8,8,0"
+                                    Background="{DynamicResource Accent}" Cursor="Hand"
+                                    ToolTip="Другие способы принять" PreviewMouseLeftButtonDown="OnInvitationAcceptMenu">
+                                <Grid>
+                                    <Rectangle Width="1" Margin="0,6" HorizontalAlignment="Left" Fill="White"
+                                               Opacity="0.34" />
+                                    <Path Data="{StaticResource ChevronDown}" Stroke="White" StrokeThickness="1.6"
+                                          StrokeLineJoin="Round" Stretch="Uniform" Width="10" Height="10"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
                             </Border>
                             <Border Height="28" Padding="12,0" CornerRadius="8" Margin="6,0,0,0"
                                     Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}"
                                     BorderThickness="1" Cursor="Hand" Tag="tentative"
-                                    MouseLeftButtonUp="OnInvitationReply">
+                                    PreviewMouseLeftButtonDown="OnInvitationReply">
                                 <TextBlock Text="Под вопросом" FontSize="12" Foreground="{DynamicResource Ink}"
                                            VerticalAlignment="Center" />
                             </Border>
                             <Border Height="28" Padding="12,0" CornerRadius="8" Margin="6,0,0,0"
                                     Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}"
                                     BorderThickness="1" Cursor="Hand" Tag="decline"
-                                    MouseLeftButtonUp="OnInvitationReply">
+                                    PreviewMouseLeftButtonDown="OnInvitationReply">
                                 <TextBlock Text="Отклонить" FontSize="12" Foreground="{DynamicResource Ink}"
                                            VerticalAlignment="Center" />
                             </Border>
@@ -971,31 +998,72 @@
                         <StackPanel>
                             <TextBlock x:Name="DetailRsvpLabel" FontSize="11" Foreground="{DynamicResource Secondary}"
                                        Margin="0,0,0,9" />
-                            <Grid>
+                            <Border x:Name="DetailRsvpChange" Height="34" Padding="14,0" CornerRadius="8"
+                                    HorizontalAlignment="Left" Background="{DynamicResource Card}"
+                                    BorderBrush="{DynamicResource Line}" BorderThickness="1" Cursor="Hand"
+                                    Visibility="Collapsed" MouseLeftButtonUp="OnRsvpChange">
+                                <TextBlock Text="Изменить ответ" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource Ink}" VerticalAlignment="Center" />
+                            </Border>
+                            <Grid x:Name="DetailRsvpButtons">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <Border Grid.Column="0" x:Name="RsvpAccept" Margin="0,0,4,0" Height="34" CornerRadius="8"
-                                        Background="{DynamicResource Accent}" Cursor="Hand" Tag="accept"
-                                        MouseLeftButtonUp="OnRsvp">
-                                    <TextBlock Text="Принять" FontSize="13" FontWeight="SemiBold" Foreground="White"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
+                                <Grid Grid.Column="0" Margin="0,0,4,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" x:Name="RsvpAccept" Height="34" CornerRadius="8,0,0,8"
+                                            Background="{DynamicResource Accent}" Cursor="Hand" Tag="accept"
+                                            MouseLeftButtonUp="OnRsvp">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center">
+                                            <Path Data="{StaticResource CheckIcon}" Stroke="White" StrokeThickness="1.8"
+                                                  StrokeLineJoin="Round" Stretch="Uniform" Width="13" Height="13" />
+                                            <TextBlock Text="Принять" FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="White" Margin="7,0,0,0" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Column="1" x:Name="RsvpAcceptMore" Width="30" Height="34"
+                                            CornerRadius="0,8,8,0" Background="{DynamicResource Accent}" Cursor="Hand"
+                                            ToolTip="Другие способы принять" MouseLeftButtonUp="OnRsvpAcceptMenu">
+                                        <Grid>
+                                            <Rectangle Width="1" Margin="0,7" HorizontalAlignment="Left" Fill="White"
+                                                       Opacity="0.34" />
+                                            <Path Data="{StaticResource ChevronDown}" Stroke="White" StrokeThickness="1.7"
+                                                  StrokeLineJoin="Round" Stretch="Uniform" Width="11" Height="11"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
                                 <Border Grid.Column="1" x:Name="RsvpTentative" Margin="4,0" Height="34" CornerRadius="8"
                                         Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}"
                                         BorderThickness="1" Cursor="Hand" Tag="tentative" MouseLeftButtonUp="OnRsvp">
-                                    <TextBlock Text="Под вопросом" FontSize="13" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource Ink}" HorizontalAlignment="Center"
-                                               VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                                VerticalAlignment="Center">
+                                        <Path Data="{StaticResource QuestionIcon}" Stroke="{DynamicResource Ink}"
+                                              StrokeThickness="1.5" StrokeLineJoin="Round" Stretch="Uniform"
+                                              Width="14" Height="14" />
+                                        <TextBlock Text="Под вопросом" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Ink}" Margin="7,0,0,0"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
                                 </Border>
                                 <Border Grid.Column="2" x:Name="RsvpDecline" Margin="4,0,0,0" Height="34" CornerRadius="8"
                                         Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}"
                                         BorderThickness="1" Cursor="Hand" Tag="decline" MouseLeftButtonUp="OnRsvp">
-                                    <TextBlock Text="Отклонить" FontSize="13" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource Ink}" HorizontalAlignment="Center"
-                                               VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                                VerticalAlignment="Center">
+                                        <Path Data="{StaticResource CloseIcon}" Stroke="{DynamicResource Ink}"
+                                              StrokeThickness="1.5" StrokeLineJoin="Round" Stretch="Uniform"
+                                              Width="12" Height="12" />
+                                        <TextBlock Text="Отклонить" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Ink}" Margin="7,0,0,0"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
                                 </Border>
                             </Grid>
                         </StackPanel>
@@ -1138,6 +1206,53 @@
                     </Border>
                 </Grid>
             </Border>
+
+            <Grid x:Name="AcceptMenuLayer" Grid.RowSpan="6" Background="Transparent" Visibility="Collapsed"
+                  MouseLeftButtonDown="OnAcceptMenuDismiss">
+                <Border x:Name="AcceptMenuCard" Width="258" HorizontalAlignment="Left" VerticalAlignment="Top"
+                        Padding="6" CornerRadius="11" Background="{DynamicResource Card}"
+                        BorderBrush="{DynamicResource Line}" BorderThickness="1" Effect="{DynamicResource CardShadow}"
+                        MouseLeftButtonDown="OnAcceptMenuHold">
+                    <StackPanel>
+                        <Border Style="{StaticResource AcceptMenuItem}" Tag="silent"
+                                MouseLeftButtonUp="OnAcceptMenuPick">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Path Grid.Column="0" Data="{StaticResource CheckIcon}" Stroke="{DynamicResource Ink}"
+                                      StrokeThickness="1.7" StrokeLineJoin="Round" Stretch="Uniform" Width="13"
+                                      Height="13" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Margin="11,0,0,0">
+                                    <TextBlock Text="Принять без ответа" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource Ink}" />
+                                    <TextBlock Text="организатор увидит только статус" FontSize="11"
+                                               Foreground="{DynamicResource Secondary}" Margin="0,1,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource AcceptMenuItem}" Tag="notify"
+                                MouseLeftButtonUp="OnAcceptMenuPick">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Path Grid.Column="0" Data="{StaticResource BubbleIcon}" Stroke="{DynamicResource Ink}"
+                                      StrokeThickness="1.5" StrokeLineJoin="Round" Stretch="Uniform" Width="13"
+                                      Height="13" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Margin="11,0,0,0">
+                                    <TextBlock Text="Принять с ответом" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource Ink}" />
+                                    <TextBlock Text="организатору уйдёт уведомление" FontSize="11"
+                                               Foreground="{DynamicResource Secondary}" Margin="0,1,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
     </Border>
 </ui:FluentWindow>

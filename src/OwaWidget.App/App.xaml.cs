@@ -302,7 +302,7 @@ public partial class App : Application
                     : session.FetchBodyAsync(collectionId, serverId);
             };
 
-            _flyout.MeetingResponder = (serverId, instance, reply, fromInbox) =>
+            _flyout.MeetingResponder = command =>
             {
                 var session = _session;
 
@@ -311,14 +311,19 @@ public partial class App : Application
                     return Task.FromResult(false);
                 }
 
-                var response = reply switch
+                var response = command.Reply switch
                 {
                     MeetingReply.Accept => MeetingUserResponse.Accept,
                     MeetingReply.Tentative => MeetingUserResponse.Tentative,
                     _ => MeetingUserResponse.Decline
                 };
 
-                return session.RespondToMeetingAsync(serverId, instance, response, fromInbox);
+                return session.RespondToMeetingAsync(
+                    command.ServerId,
+                    command.Instance,
+                    response,
+                    command.FromInbox,
+                    command.NotifyOrganizer);
             };
         }
 
