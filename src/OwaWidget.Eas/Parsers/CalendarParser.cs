@@ -167,7 +167,8 @@ public static partial class CalendarParser
                 Start = EmailParser.ParseDate(exception.ChildText("StartTime")),
                 End = EmailParser.ParseDate(exception.ChildText("EndTime")),
                 Subject = exception.ChildText("Subject"),
-                Location = exception.ChildText("Location")
+                Location = exception.ChildText("Location"),
+                MeetingStatus = exception.ChildInt("MeetingStatus")
             });
         }
 

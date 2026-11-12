@@ -113,7 +113,7 @@ public static class RecurrenceExpander
 
             var key = Normalize(exception.ExceptionStartTime.Value);
 
-            if (exception.Deleted)
+            if (exception.Deleted || exception.IsCancelled)
             {
                 deleted.Add(key);
             }

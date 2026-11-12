@@ -42,6 +42,10 @@ public sealed record EasAppointmentException
     public string? Subject { get; init; }
 
     public string? Location { get; init; }
+
+    public int? MeetingStatus { get; init; }
+
+    public bool IsCancelled => MeetingStatus is { } status && (status & 4) != 0;
 }
 
 public enum EasAttendeeStatus

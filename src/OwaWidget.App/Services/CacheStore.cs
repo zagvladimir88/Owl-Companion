@@ -33,7 +33,7 @@ public sealed class CalendarCache
 
 public static class CacheStore
 {
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 
     private const int RetainAppointmentDays = 7;
 
