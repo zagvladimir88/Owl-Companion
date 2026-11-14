@@ -389,7 +389,8 @@ public sealed class EasSession : IDisposable
             DeviceId = _state.DeviceId,
             DeviceType = "OwaWidget",
             ProtocolVersion = "14.1",
-            UserAgent = "OwaWidget/1.0"
+            UserAgent = "OwaWidget/1.0",
+            Trace = Log.Info
         })
         {
             PolicyKey = _state.PolicyKey

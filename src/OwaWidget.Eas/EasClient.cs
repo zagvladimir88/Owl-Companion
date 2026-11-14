@@ -12,17 +12,20 @@ public sealed class EasClient : IDisposable
 
     private readonly EasOptions _options;
     private readonly HttpClient _http;
+    private readonly FallbackConnector _connector;
     private readonly string _authorization;
 
     public EasClient(EasOptions options)
     {
         _options = options;
+        _connector = new FallbackConnector(options.UseSystemProxy, options.Trace);
 
-        var handler = new HttpClientHandler
+        var handler = new SocketsHttpHandler
         {
             AllowAutoRedirect = false,
             UseProxy = options.UseSystemProxy,
-            AutomaticDecompression = DecompressionMethods.All
+            AutomaticDecompression = DecompressionMethods.All,
+            ConnectCallback = _connector.ConnectAsync
         };
 
         _http = new HttpClient(handler)
@@ -133,6 +136,7 @@ public sealed class EasClient : IDisposable
     public void Dispose()
     {
         _http.Dispose();
+        _connector.Dispose();
     }
 
     private Uri BuildUri(string? command)

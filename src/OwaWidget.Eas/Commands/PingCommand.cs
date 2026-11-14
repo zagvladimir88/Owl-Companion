@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Net;
 using OwaWidget.Eas.Wbxml;
 
 namespace OwaWidget.Eas.Commands;
@@ -32,6 +34,8 @@ public static class PingCommand
 
     public const int DefaultHeartbeatSeconds = 470;
 
+    private static readonly TimeSpan GatewayCutoffThreshold = TimeSpan.FromSeconds(30);
+
     public static async Task<PingResult> ExecuteAsync(
         EasClient client,
         IReadOnlyCollection<PingFolder> folders,
@@ -60,8 +64,18 @@ public static class PingCommand
         writer.EndElement();
 
         var timeout = TimeSpan.FromSeconds(heartbeatSeconds + 30);
+        var started = Stopwatch.StartNew();
 
-        var root = await client.SendAsync("Ping", writer, timeout, cancellationToken: cancellationToken).ConfigureAwait(false);
+        WbxmlElement? root;
+        try
+        {
+            root = await client.SendAsync("Ping", writer, timeout, cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+        catch (EasHttpException exception) when (exception.StatusCode == HttpStatusCode.GatewayTimeout &&
+                                                  started.Elapsed >= GatewayCutoffThreshold)
+        {
+            return new PingResult((int)PingStatus.Expired, Array.Empty<string>(), null, null);
+        }
 
         if (root is null)
         {
