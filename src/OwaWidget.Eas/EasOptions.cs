@@ -20,6 +20,8 @@ public sealed class EasOptions
 
     public TimeSpan DefaultTimeout { get; init; } = TimeSpan.FromSeconds(60);
 
+    public Action<string>? Trace { get; init; }
+
     public static string NewDeviceId()
     {
         return Guid.NewGuid().ToString("N");
